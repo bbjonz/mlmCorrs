@@ -12,7 +12,7 @@ icc.corrs(x, group, title = "Descriptive Stats", gmc = FALSE,
 
 \item{group}{Nesting variable.}
 
-\item{title}{Table capation.}
+\item{title}{Table caption.}
 
 \item{gmc}{Provide group-mean center correlations.  Default is FALSE.}
 

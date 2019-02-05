@@ -19,7 +19,7 @@ corstars(x, method = "pearson", removeTriangle = c("upper", "lower"),
 
 \item{result}{Output options.  Default is html table to viewer.  Option "text" returns output to console only.}
 
-\item{title}{Table capation.}
+\item{title}{Table caption.}
 }
 \value{
 A correlation table
