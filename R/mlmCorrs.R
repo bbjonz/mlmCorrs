@@ -3,7 +3,7 @@
 #' This function creates the ICC matrix
 #' @param x Data object.
 #' @param group Nesting variable.
-#' @param title Table capation.
+#' @param title Table caption.
 #' @param gmc Provide group-mean center correlations.  Default is FALSE.
 #' @param alpha.order Sort variables alphabetically.  Default is False
 #' @param result Output options.  Default is html table to viewer.  Option "text" returns output to console only.
@@ -12,24 +12,25 @@
 
 icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.order = FALSE, result = "html") {
 
-    # rename group column to group
+  # ungroup if original dataset is grouped
+  if (dplyr::is.grouped_df(x)) {
+
+    x <- x %>% dplyr::ungroup()
+  }
+
+  # rename group column to group
     names(x)[names(x) == group] <- "group"
 
     # define magrittr pipe
     `%>%` <- magrittr::`%>%`
-
-    # ungroup if original dataset is grouped
-    if (dplyr::is.grouped_df(x)) {
-
-        x <- x %>% dplyr::ungroup()
-    }
 
     # create the long file for the ICC routine/function default behavior is to sort alphabetically the else
     # routine keeps original variable order
     if (alpha.order) {
         long.dat <- x %>% tidyr::gather(type, score, -group)
     } else {
-        long.dat <- x %>% tidyr::gather(type, score, -group) %>% dplyr::mutate(type = factor(type, levels = names(subset(x,
+        long.dat <- x %>% tidyr::gather(type, score, -group) %>%
+          dplyr::mutate(type = factor(type, levels = names(subset(x,
             select = -group))))  # add this line to convert the key to a factor
     }
 
@@ -44,28 +45,54 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
     }
 
     # get the model estimates
-    models <- long.dat %>% tidyr::nest(-type) %>% dplyr::mutate(aov_obj = purrr::map(data, aov_model), summaries = purrr::map(aov_obj,
-        broom.mixed::tidy)) %>% tidyr::unnest(summaries, .drop = T) %>% dplyr::select(type, effect, estimate,
-        term) %>% dplyr::filter(effect != "fixed") %>% dplyr::mutate(variance = estimate^2) %>% dplyr::select(-estimate,
-        -effect) %>% tidyr::spread(term, variance) %>% dplyr::rename(group.var = `sd__(Intercept)`, residual = sd__Observation) %>%
-        dplyr::mutate(ICC = group.var/(group.var + residual)) %>% dplyr::mutate(ICC = DescTools::Format(ICC,
-        digits = 2, leading = "drop"))
+    models <- long.dat %>%
+      tidyr::nest(-type) %>%
+      dplyr::mutate(aov_obj = purrr::map(data, aov_model),
+                    summaries = purrr::map(aov_obj,
+                    broom.mixed::tidy)) %>%
+      tidyr::unnest(summaries, .drop = T) %>%
+      dplyr::select(type, effect, estimate,term) %>%
+      dplyr::filter(effect != "fixed") %>%
+      dplyr::mutate(variance = estimate^2) %>%
+      dplyr::select(-estimate,-effect) %>%
+      tidyr::spread(term, variance) %>%
+      dplyr::rename(group.var = `sd__(Intercept)`,
+                    residual = sd__Observation) %>%
+      dplyr::mutate(ICC = group.var/(group.var + residual)) %>%
+      dplyr::mutate(ICC = DescTools::Format(ICC,digits = 2, leading = "drop"))
 
-    # get the ranova LRTs
+    # get the ranova LRTs (and remove warnings from broom.mixed)
     options(warn = -1)
-    tests <- long.dat %>% tidyr::nest(-type) %>% dplyr::mutate(test_obj = purrr::map(data, aov_test), test_summaries = purrr::map(test_obj,
-        broom.mixed::tidy)) %>% tidyr::unnest(test_summaries, .drop = T) %>% dplyr::filter(!is.na(LRT))
+    tests <- long.dat %>%
+      tidyr::nest(-type) %>%
+      dplyr::mutate(test_obj = purrr::map(data, aov_test),
+                    test_summaries = purrr::map(test_obj,
+                    broom.mixed::tidy)) %>%
+      tidyr::unnest(test_summaries, .drop = T) %>%
+      dplyr::filter(!is.na(LRT))
     options(warn = 0)
 
-
-    mlm.iccs <- long.dat %>% dplyr::group_by(type) %>% na.omit %>% dplyr::summarise(mean = mean(score, na.rm = T),
-        sd = sd(score, na.rm = T), n = n()/dplyr::n_distinct(group)) %>% # dataframe needed because descTools chokes without it
-    as.data.frame() %>% dplyr::left_join(., models, by = "type") %>% dplyr::left_join(., tests[c("type",
-        "p.value")], by = "type") %>% dplyr::mutate(ICC2 = group.var/(group.var + residual/n)) %>% dplyr::select(type,
-        mean, sd, ICC, p.value, ICC2) %>% dplyr::mutate(mean = DescTools::Format(mean, digits = 2, leading = "drop")) %>%
-        dplyr::mutate(sd = DescTools::Format(sd, digits = 2, leading = "drop")) %>% dplyr::mutate(ICC2 = DescTools::Format(ICC2,
-        digits = 2, leading = "drop")) %>% dplyr::mutate(icc.stars = ifelse(p.value < 0.01, paste0(ICC, "**"),
-        ifelse(p.value < 0.05, paste0(ICC, "*"))), ICC) %>% dplyr::select(type, mean, sd, icc.stars, ICC2)
+    mlm.iccs <- long.dat %>%
+      dplyr::group_by(type) %>%
+      na.omit %>%
+      dplyr::summarise(mean = mean(score, na.rm = T),
+        sd = sd(score, na.rm = T), n = n()/dplyr::n_distinct(group)) %>%
+      # dataframe needed because descTools chokes without it
+        as.data.frame() %>%
+        dplyr::left_join(., models, by = "type") %>%
+        dplyr::left_join(., tests[c("type", "p.value")], by = "type") %>%
+        dplyr::mutate(ICC2 = group.var/(group.var + residual/n)) %>%
+        dplyr::select(type, mean, sd, ICC, p.value, ICC2) %>%
+        dplyr::mutate(mean = DescTools::Format(mean, digits = 2,
+                                               leading = "drop")) %>%
+        dplyr::mutate(sd = DescTools::Format(sd, digits = 2,
+                                             leading = "drop")) %>%
+        dplyr::mutate(ICC2 = DescTools::Format(ICC2,digits = 2,
+                                               leading = "drop")) %>%
+        dplyr::mutate(icc.stars = ifelse(p.value < 0.01, paste0(ICC, "**"),
+                                         ifelse(p.value < 0.05,
+                                                paste0(ICC,"*"),ICC))) %>%
+        dplyr::select(type, mean, sd, icc.stars, ICC2)
 
     mlm.iccs
     # Adapted from the corstars function https://github.com/Cogitos/statxp/blob/master/R/corstars.R
@@ -104,12 +131,14 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
 
 
         # group mean center the variables
-        cor.vars.c[colnames(cor.vars.c)] <- lapply(cor.vars.c[colnames(cor.vars.c)], function(y) y - ave(y,
-            cor.vars.c$group.c, FUN = mean))
+        cor.vars.c[colnames(cor.vars.c)] <- lapply(cor.vars.c[colnames(cor.vars.c)],
+                                                   function(y) y - ave(y,
+                                                  cor.vars.c$group.c, FUN = mean))
 
         cor.vars.c <- dplyr::select(cor.vars.c, -c(group.c))
 
-        correlation_matrix.c <- Hmisc::rcorr(as.matrix(cor.vars.c, type = "pearson"))
+        correlation_matrix.c <- Hmisc::rcorr(as.matrix(cor.vars.c,
+                                                       type = "pearson"))
 
         R.c <- correlation_matrix.c$r  # Matrix of correlation coeficients
         p.c <- correlation_matrix.c$P  # Matrix of p-value
@@ -169,19 +198,27 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
     # get names for table
     tablenames <- as.character(colnames(cor.vars))
     # capitalize first letter in each variable name
-    tablenames <- paste0(toupper(substr(tablenames, 1, 1)), substr(tablenames, 2, nchar(tablenames)))
+    tablenames <- paste0(toupper(substr(tablenames, 1, 1)), substr(tablenames,
+                                                            2, nchar(tablenames)))
 
     # bind the correlation tables
     cbind(mlm.iccs[-1], Rnew)
 
     if(result=="html") {
     # htmlTable
-    htmlTable::htmlTable(cbind(mlm.iccs[-1], Rnew), header = c("Mean", "SD", "ICC(1)", "ICC(2)", rep(1:ncol(Rnew))),
-        rnames = paste(1:nrow(Rnew), ". ", tablenames, sep = ""), css.cell = "padding-left: 1em; padding-right: 1em;",
+    htmlTable::htmlTable(cbind(mlm.iccs[-1], Rnew),
+                         header = c("Mean", "SD", "ICC(1)",
+                                    "ICC(2)", rep(1:ncol(Rnew))),
+        rnames = paste(1:nrow(Rnew), ". ", tablenames, sep = ""),
+        css.cell = "padding-left: 1em; padding-right: 1em;",
         caption = paste0("<b>", title, "</b>"), tfoot = footer)
 } else {
   cbind(mlm.iccs[-1], Rnew)
 }
+
+    #Proof of concept
+
+
     # end icc.corrs function
 }
 
@@ -194,7 +231,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
 #' @param removeTriangle Default is upper (per APA).
 #' @param alpha.order Alphabetize variables.  Default is FALSE.
 #' @param result Output options.  Default is html table to viewer.  Option "text" returns output to console only.
-#' @param title Table capation.
+#' @param title Table caption.
 #' @return A correlation table
 #' @export
 
@@ -299,7 +336,7 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
                          css.cell = "padding-left: .5em; padding-right: .2em;",
                          caption = title,
                          rowlabel="Variables",
-                         tfoot="<i>Note</i>: *<i>p</i> < .05; **<i>p</i> < .01")
+                         tfoot="<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01.")
   } else {
     xtable::xtable(Rnew, type="latex")
   }
