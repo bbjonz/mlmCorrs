@@ -2,7 +2,7 @@
 % Please edit documentation in R/mlmCorrs.R
 \name{icc.corrs}
 \alias{icc.corrs}
-\title{Get ICCs}
+\title{Estimate ICCs, correlations, and descriptive Statistics}
 \usage{
 icc.corrs(x, group, title = "Descriptive Stats", gmc = FALSE,
   alpha.order = FALSE, result = "html")

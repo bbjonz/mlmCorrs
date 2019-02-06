@@ -1,4 +1,4 @@
-#' Get ICCs
+#' Estimate ICCs, correlations, and descriptive Statistics
 #'
 #' This function creates the ICC matrix
 #' @param x Data object.
