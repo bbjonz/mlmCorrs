@@ -1,6 +1,6 @@
 Package: mlmCorrs
 Title: What the Package Does (one line, title case)
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R: person("Joseph", "Bonito", email = "jbonito@email.arizona.edu", role = c("aut", "cre"))
 Description: Creates one of several correlation matrices and provides intraclass correlations for a set of variables.
 Depends: R (>= 3.5.2)
