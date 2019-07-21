@@ -442,8 +442,6 @@ lgm <-function(x, group, title="LGM", stars=TRUE, sumstats=TRUE, sumtable = FALS
   ind <- cov2cor(as.matrix(as.data.frame(inspect(model.out,"sampstat")$within$cov)))
   grp <- cov2cor(as.matrix(as.data.frame(inspect(model.out,"sampstat")$group$cov)))
 
-  lavInspect(lw.lgm.out,"sampstat")$group$cov
-
   all.corrs.sem <- ind*0
   ind[upper.tri(ind, diag = TRUE)] <- 0
   grp[lower.tri(grp, diag = TRUE)] <- 0
@@ -464,8 +462,6 @@ lgm <-function(x, group, title="LGM", stars=TRUE, sumstats=TRUE, sumtable = FALS
   if(stars) {
     z.w.groups <- lavInspect(model.out, "est")$within$theta/lavInspect(model.out, "se")$within$theta
     z.b.groups <- as.matrix(as.data.frame(inspect(model.out, "est")[[2]]["theta"]))/as.matrix(as.data.frame(inspect(model.out, "se")[[2]]["theta"]))
-
-    #easy to get z-scores in matrix form
 
     #get table of probabilities
     #diag is for the variances
