@@ -434,20 +434,20 @@ lgm <-function(x, group, title="LGM", stars=TRUE, sumstats=TRUE, sumtable = FALS
 
   if(sumtable) {
     summary(model.out, standardized=TRUE)
-    #standardizedSolution(model.out)
   }
 
   #now build and output LGM matrix
   #correlations printed but significance for covariances
-  ind <- cov2cor(as.matrix(as.data.frame(inspect(model.out,"sampstat")$within$cov)))
-  grp <- cov2cor(as.matrix(as.data.frame(inspect(model.out,"sampstat")$group$cov)))
+  ind <- cov2cor(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[1]])))
+  grp <- cov2cor(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[2]])))
 
   all.corrs.sem <- ind*0
   ind[upper.tri(ind, diag = TRUE)] <- 0
   grp[lower.tri(grp, diag = TRUE)] <- 0
   all.corrs.sem <- ind + grp
-  diag(all.corrs.sem) <- diag(as.matrix(as.data.frame(inspect(model.out,"sampstat")$group$cov)))/
-    (diag(as.matrix(as.data.frame(inspect(model.out,"sampstat")$group$cov)))+diag(as.matrix(as.data.frame(inspect(model.out,"sampstat")$within$cov))))
+  diag(all.corrs.sem) <- diag(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[2]])))/
+    (diag(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[2]])))+
+       diag(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[1]]))))
 
   #create the cell formatting for htmltable
   cell.form <- all.corrs.sem*0
