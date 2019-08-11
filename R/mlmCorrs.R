@@ -317,9 +317,11 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
   }
 
 
-  if (result[1]=="none")  {
-    rownames(Rnew) <- paste0(toupper(substr(rownames(Rnew), 1, 1)), substr(rownames(Rnew), 2, nchar(rownames(Rnew))))
-    row.nums <- rep(1:length(Rnew),1)
+  if (result[1]=="text")  {
+    rownames(Rnew) <- paste0(toupper(substr(rownames(Rnew), 1, 1)),
+                             substr(rownames(Rnew), 2, nchar(rownames(Rnew))))
+    row.nums <- rep(1:length(rownames(Rnew)),1)
+
     rownames(Rnew) <- paste(row.nums,". ", rownames(Rnew), sep = "")
 
     return(Rnew)
