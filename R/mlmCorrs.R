@@ -337,13 +337,15 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
 #' @param group Nesting variable.
 #' @param title Table capation.
 #' @param stars Provide significance stars.  Default is TRUE.
+#' @param result Output options.  Default is html table to viewer.  Option "text" returns just that.
 #' @param sumstats Provide summary stats.  Default is TRUE.
 #' @param sumtable Provide sem summary table. Default is FALSE.
 #' @param alpha.order Sort variables alphabetically.  Default is FALSE.
 #' @return A correlation table
 #' @export
 
-lgm <-function(x, group, title="LGM", stars=TRUE, sumstats=TRUE, sumtable = FALSE, alpha.order = FALSE) {
+lgm <-function(x, group, title="LGM", stars=TRUE, result = "html",
+               sumstats=TRUE, sumtable = FALSE, alpha.order = FALSE) {
   options(scipen=999)
 
   #define magrittr pipe
@@ -436,12 +438,6 @@ lgm <-function(x, group, title="LGM", stars=TRUE, sumstats=TRUE, sumtable = FALS
     (diag(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[2]])))+
        diag(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[1]]))))
 
-  #create the cell formatting for htmltable
-  cell.form <- all.corrs.sem*0
-  diag(cell.form) <- rep("font-weight: bold",nrow(cell.form))
-  cell.form[upper.tri(cell.form, diag=FALSE)] <- ""
-  cell.form[lower.tri(cell.form, diag=FALSE)] <- "font-style: italic;"
-
   #removes leading zeros and rounds to two decimal places
   all.corrs.sem <- DescTools::Format(all.corrs.sem, digits=2,leading="drop", na.form="--")
 
@@ -455,7 +451,7 @@ lgm <-function(x, group, title="LGM", stars=TRUE, sumstats=TRUE, sumtable = FALS
     prob.inds <- pnorm(z.w.groups, lower.tail = FALSE)*2
     prob.groups <- pnorm(z.b.groups, lower.tail = FALSE)*2
 
-    #gets rid of the four stars bullshit
+    #significance starts
     mystars.ind <- ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    "))
     mystars.grp <- ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    "))
 
@@ -465,10 +461,18 @@ lgm <-function(x, group, title="LGM", stars=TRUE, sumstats=TRUE, sumtable = FALS
     all.stars <- matrix(paste0(mystars.ind, mystars.grp), ncol=ncol(prob.inds))
 
     matrix.out <- matrix(paste0(all.corrs.sem, all.stars), ncol=ncol(all.corrs.sem))
-    table.footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. Intraclass correlations are on the diagonal (in bold). Individual-level correlations are on the lower diagonal (in italics). Group-level correlations are on the upper diagonal."
+
+    #format diagonal with bold
+    if (result=="html") {
+    matrix.d <- diag(matrix.out)
+    matrix.d <- kableExtra::text_spec(matrix.d, "html", bold = TRUE)
+    diag(matrix.out) <- matrix.d
+    }
+
+    table.footer <- "*<i>p</i> < .05. **<i>p</i> < .01. Intraclass correlations are on bold the diagonal. Individual-level correlations are on the lower diagonal. Group-level correlations are on the upper diagonal."
   } else {
     matrix.out <- all.corrs.sem
-    table.footer <- "Intraclass correlations are on the diagonal (in bold). Individual-level correlations are on the lower diagonal (in italics). Group-level correlations are on the upper diagonal."
+    table.footer <- "Intraclass correlations are on the diagonal. Individual-level correlations are on the lower diagonal. Group-level correlations are on the upper diagonal."
   }
 
   if(sumstats) {
@@ -478,23 +482,24 @@ lgm <-function(x, group, title="LGM", stars=TRUE, sumstats=TRUE, sumtable = FALS
 
     #insert descriptive stats at front of table
     matrix.out <- cbind(tempstats, matrix.out)
-    #process htmltable info
-    table.headers <- c("Mean","SD",rep(1:ncol(all.corrs.sem)))
-    tempcol <- rep("", nrow(all.corrs.sem))
-    cell.form <- cbind(tempcol,tempcol, cell.form)
-  } else {
-    table.headers <- rep(1:ncol(all.corrs.sem))
-  }
+    #process header info
+    names(matrix.out) <- c("Mean","SD",rep(1:ncol(all.corrs.sem)))
+}
 
+    #process row names
+    rownames(matrix.out) <- paste0(toupper(substr(rownames(matrix.out), 1, 1)),
+                             substr(rownames(matrix.out), 2, nchar(rownames(matrix.out))))
+    row.nums <- rep(1:length(rownames(matrix.out)),1)
 
-  library(htmlTable)
-  htmlTable(matrix.out,
-            header=table.headers,
-            rnames = paste(1:nrow(all.corrs.sem), ". ", tablenames, sep = ""),
-            #css.cell = "padding-left: 1em; padding-right: 1em;",
-            css.cell = cell.form,
-            caption = paste0("<b>",title,"</b>"),
-            tfoot = table.footer)
+    rownames(matrix.out) <- paste(row.nums,". ", rownames(matrix.out), sep = "")
+
+    if (result=="html") {
+    knitr::kable(matrix.out, caption = title, escape = F) %>%
+      kableExtra::kable_styling(full_width = F) %>%
+      kableExtra::footnote(general = table.footer, footnote_as_chunk = T, escape = FALSE)
+    } else {
+      return(matrix.out)
+    }
   #ends the lgm function
 }
 
