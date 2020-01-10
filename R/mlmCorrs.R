@@ -68,7 +68,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
       dplyr::mutate(test_obj = purrr::map(data, aov_test),
                     test_summaries = purrr::map(test_obj,
                     broom.mixed::tidy)) %>%
-      tidyr::unnest(test_summaries, .drop = T) %>%
+      tidyr::unnest(test_summaries) %>%
       dplyr::filter(!is.na(LRT))
     options(warn = 0)
 
@@ -89,10 +89,10 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
                                              leading = "drop")) %>%
         dplyr::mutate(ICC2 = DescTools::Format(ICC2,digits = 2,
                                                leading = "drop")) %>%
-        dplyr::mutate(icc.stars = ifelse(p.value < 0.01, paste0(ICC, "**"),
+        dplyr::mutate(ICC1 = ifelse(p.value < 0.01, paste0(ICC, "**"),
                                          ifelse(p.value < 0.05,
                                                 paste0(ICC,"*"),ICC))) %>%
-        dplyr::select(type, mean, sd, icc.stars, ICC2)
+        dplyr::select(type, mean, sd, ICC1, ICC2)
 
     mlm.iccs
     # Adapted from the corstars function https://github.com/Cogitos/statxp/blob/master/R/corstars.R
@@ -158,12 +158,12 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
 
         all.stars <- matrix(paste0(mystars, mystars.c), ncol = ncol(R.c))
 
-        ## build a new matrix that includes the correlations with their apropriate stars
+        ## build a new matrix that includes the correlations with their appropriate stars
         Rnew <- matrix(paste0(R, all.stars), ncol = ncol(R.c))
         diag(Rnew) <- paste0(diag(Rnew), "")
         rownames(Rnew) <- colnames(cor.vars.c)
 
-        footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. Correlations on the lower diagonal are at the individual level of analysis. Correlations on the upper diagonal are group-mean centered."
+        footer <- "* <i>p</i> < .05. **<i>p</i> < .01. Correlations on the lower diagonal are at the individual level of analysis. Correlations on the upper diagonal are group-mean centered."
 
     } else {
 
@@ -188,7 +188,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
         row.nums <- rep(1:length(Rnew), 1)
         rownames(Rnew) <- paste(row.nums, ". ", rownames(Rnew), sep = "")
 
-        footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. Correlations are at the individual level of analysis."
+        footer <- "*<i>p</i> < .05. **<i>p</i> < .01. Correlations are at the individual level of analysis."
 
     }
 
@@ -201,17 +201,21 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
     tablenames <- paste0(toupper(substr(tablenames, 1, 1)), substr(tablenames,
                                                             2, nchar(tablenames)))
 
-    # bind the correlation tables
+    # bind the correlation tables and provide row/col names
     cbind(mlm.iccs[-1], Rnew)
+    tablePrint <- cbind(mlm.iccs[-1], Rnew)
+    row.names(tablePrint) <- paste0(1:nrow(Rnew), ". ", tablenames)
+    colnames(tablePrint) <- c("Mean", "SD", "ICC(1)",
+                              "ICC(2)", rep(1:ncol(Rnew)))
 
     if(result=="html") {
-    # htmlTable
-    htmlTable::htmlTable(cbind(mlm.iccs[-1], Rnew),
-                         header = c("Mean", "SD", "ICC(1)",
-                                    "ICC(2)", rep(1:ncol(Rnew))),
-        rnames = paste(1:nrow(Rnew), ". ", tablenames, sep = ""),
-        css.cell = "padding-left: 1em; padding-right: 1em;",
-        caption = paste0("<b>", title, "</b>"), tfoot = footer)
+    knitr::kable(tablePrint, type = "html", escape = F,
+                 caption = paste0("<b>", title, "</b>")) %>%
+    kableExtra::kable_styling(bootstrap_options = "striped", full_width = F) %>%
+    kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = F)
+
+    } else if (result[1]=="text") {
+    return(tablePrint)
 } else {
   cbind(mlm.iccs[-1], Rnew)
 }
@@ -230,7 +234,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
 #' @param method Correlation method. Default is pearson
 #' @param removeTriangle Default is upper (per APA).
 #' @param alpha.order Alphabetize variables.  Default is FALSE.
-#' @param result Output options.  Default is html table to viewer.  Option "text" returns output to console only.
+#' @param result Output options.  Default is html table to viewer.  Option "text" returns just that.
 #' @param title Table caption.
 #' @return A correlation table
 #' @export
@@ -260,15 +264,8 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
   R <- correlation_matrix$r # Matrix of correlation coeficients
   p <- correlation_matrix$P # Matrix of p-value
 
-  ## Define notions for significance levels; spacing is important.
-  #mystars <- ifelse(p < .0001, "****", ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))))
-
-  #gets rid of the four stars bullshit
+  #define significance stars
   mystars <- ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))
-
-
-  ## trunctuate the correlation matrix to two decimal
-  #R <- format(round(cbind(rep(-1.11, ncol(x)), R), 2))[,-1]
 
   R <- DescTools::Format(R, digits=2,leading="drop", na.form="--", sci = NA)
   #print(R)
@@ -277,7 +274,6 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
   Rnew <- matrix(paste0(R, mystars), ncol=ncol(x))
   diag(Rnew) <- paste0(diag(R), "")
   rownames(Rnew) <- colnames(x)
-
 
   #colnames(Rnew) <- paste(colnames(x), "", sep="")
 
@@ -295,7 +291,6 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
     Rnew <- as.data.frame(Rnew, stringsAsFactors = F)
   }
 
-
   #Get column numbers as names
   col.nums <- rep(1:length(Rnew),1)
   colnames(Rnew) <- as.character(col.nums)
@@ -308,37 +303,27 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
 
     #insert descriptive stats at front of table
     Rnew <- cbind(tempstats, Rnew)
-    #process htmltable info
-    table.headers <- c("Mean","SD",rep(1:ncol(R)))
-    tempcol <- rep("", nrow(Rnew))
-    cell.form <- cbind(tempcol,tempcol,R)
-  } else {
-    table.headers <- rep(1:ncol(R))
+    #provide column names
+    names(Rnew) <- c("Mean","SD",rep(1:ncol(R)))
   }
 
-
-  if (result[1]=="text")  {
+  #process row names
     rownames(Rnew) <- paste0(toupper(substr(rownames(Rnew), 1, 1)),
                              substr(rownames(Rnew), 2, nchar(rownames(Rnew))))
     row.nums <- rep(1:length(rownames(Rnew)),1)
 
     rownames(Rnew) <- paste(row.nums,". ", rownames(Rnew), sep = "")
 
-    return(Rnew)
+    #footer for table
+    footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
+
+    if (result[1]=="text")  {
+      return(Rnew)
 
   } else if (result[1]=="html") {
-
-    #get names for table
-    tablenames <- as.character(colnames(x))
-    #capitalize first letter in each variable name
-    tablenames <- paste0(toupper(substr(tablenames, 1, 1)), substr(tablenames, 2, nchar(tablenames)))
-
-    htmlTable::htmlTable(Rnew, header=table.headers,
-                         rnames = paste0(1:nrow(Rnew), ". ", tablenames),
-                         css.cell = "padding-left: .5em; padding-right: .2em;",
-                         caption = title,
-                         rowlabel="Variables",
-                         tfoot="<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01.")
+    knitr::kable(Rnew) %>%
+      kableExtra::kable_styling(full_width = F) %>%
+      kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = FALSE)
   } else {
     xtable::xtable(Rnew, type="latex")
   }
