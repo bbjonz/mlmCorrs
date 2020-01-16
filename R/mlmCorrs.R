@@ -5,12 +5,14 @@
 #' @param group Nesting variable.
 #' @param title Table caption.
 #' @param gmc Provide group-mean center correlations.  Default is FALSE.
+#' @param stars Number of significance stars.  Default is 2, max is 4 (p < .0001)
 #' @param alpha.order Sort variables alphabetically.  Default is False
-#' @param result Output options.  Default is html table to viewer.  Option "text" returns output to console only.
+#' @param result Output options.  Default is kable to viewer.  Option "text" returns output to console only.
 #' @return A correlation table with sample statistics and ICC estimates
 #' @export
 
-icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.order = FALSE, result = "html") {
+icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
+                      stars = 2, alpha.order = FALSE, result = "html") {
 
   # ungroup if original dataset is grouped
   if (dplyr::is.grouped_df(x)) {
@@ -113,8 +115,21 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
     # print(R)
     p <- correlation_matrix$P  # Matrix of p-value
 
-    # gets rid of the four stars bullshit
-    mystars <- ifelse(p < 0.01, "**  ", ifelse(p < 0.05, "*   ", "    "))
+    if(stars == 2) {
+      mystars <- ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))
+      #footer for table
+      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
+    } else if(stars == 3) {
+      #footer for table
+      mystars <- ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    ")))
+      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
+    } else if(stars == 4) {
+      mystars <- ifelse(p < .0001, "****", ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))))
+      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
+
+    } else {
+      stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
+    }
 
     # get group mean centered correlations
     if (gmc) {
@@ -143,8 +158,21 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
         R.c <- correlation_matrix.c$r  # Matrix of correlation coeficients
         p.c <- correlation_matrix.c$P  # Matrix of p-value
 
-        # gets rid of the four stars bullshit
-        mystars.c <- ifelse(p.c < 0.01, "**  ", ifelse(p.c < 0.05, "*   ", "    "))
+        if(stars == 2) {
+          mystars <- ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))
+          #footer for table
+          footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
+        } else if(stars == 3) {
+          #footer for table
+          mystars <- ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    ")))
+          footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
+        } else if(stars == 4) {
+          mystars <- ifelse(p.c < .0001, "****", ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))))
+          footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
+
+        } else {
+          stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
+        }
 
         mystars.c[lower.tri(mystars.c, diag = TRUE)] <- ""
         mystars[upper.tri(mystars, diag = TRUE)] <- ""
@@ -234,14 +262,15 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE, alpha.
 #' @param method Correlation method. Default is pearson
 #' @param removeTriangle Default is upper (per APA).
 #' @param alpha.order Alphabetize variables.  Default is FALSE.
-#' @param result Output options.  Default is html table to viewer.  Option "text" returns just that.
+#' @param stars Number if significance stars. Default is 2, max is 4 (p < .0001)
+#' @param result Output options.  Default is kable to viewer.  Option "text" returns just that.
 #' @param title Table caption.
 #' @return A correlation table
 #' @export
 
 
 corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alpha.order = F,
-                    result="html", sumstats=T, title="Correlation Table"){
+                    stars = 2, result="html", sumstats=T, title="Correlation Table"){
 
   #define magrittr pipe
   `%>%` <- magrittr::`%>%`
@@ -265,12 +294,29 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
   p <- correlation_matrix$P # Matrix of p-value
 
   #define significance stars
-  mystars <- ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))
+  if(stars == 2) {
+    mystars <- ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))
+    #footer for table
+    footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
+  } else if(stars == 3) {
+    #footer for table
+    footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
+    mystars <- ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    ")))
+  } else if(stars == 4) {
+    mystars <- ifelse(p < .0001, "****", ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))))
+    footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
+
+  } else {
+    stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
+  }
+
+
+
 
   R <- DescTools::Format(R, digits=2,leading="drop", na.form="--", sci = NA)
   #print(R)
 
-  ## build a new matrix that includes the correlations with their apropriate stars
+  ## build a new matrix that includes the correlations with their appropriate stars
   Rnew <- matrix(paste0(R, mystars), ncol=ncol(x))
   diag(Rnew) <- paste0(diag(R), "")
   rownames(Rnew) <- colnames(x)
@@ -314,9 +360,6 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
 
     rownames(Rnew) <- paste(row.nums,". ", rownames(Rnew), sep = "")
 
-    #footer for table
-    footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
-
     if (result[1]=="text")  {
       return(Rnew)
 
@@ -336,16 +379,17 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
 #' @param x Data object.
 #' @param group Nesting variable.
 #' @param title Table capation.
-#' @param stars Provide significance stars.  Default is TRUE.
+#' @param printstars Provide significance stars.  Default is TRUE.
 #' @param result Output options.  Default is html table to viewer.  Option "text" returns just that.
 #' @param sumstats Provide summary stats.  Default is TRUE.
 #' @param sumtable Provide sem summary table. Default is FALSE.
+#' @param stars Number of significance stars.  Default is 2, max is 4 (p < .0001)
 #' @param alpha.order Sort variables alphabetically.  Default is FALSE.
 #' @return A correlation table
 #' @export
 
-lgm <-function(x, group, title="LGM", stars=TRUE, result = "html",
-               sumstats=TRUE, sumtable = FALSE, alpha.order = FALSE) {
+lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
+               sumstats=TRUE, sumtable = FALSE, stars = 2, alpha.order = FALSE) {
   options(scipen=999)
 
   #define magrittr pipe
@@ -442,7 +486,7 @@ lgm <-function(x, group, title="LGM", stars=TRUE, result = "html",
   all.corrs.sem <- DescTools::Format(all.corrs.sem, digits=2,leading="drop", na.form="--")
 
   #include stars by default
-  if(stars) {
+  if(printstars) {
     z.w.groups <- lavInspect(model.out, "est")$within$theta/lavInspect(model.out, "se")$within$theta
     z.b.groups <- as.matrix(as.data.frame(inspect(model.out, "est")[[2]]["theta"]))/as.matrix(as.data.frame(inspect(model.out, "se")[[2]]["theta"]))
 
@@ -451,9 +495,23 @@ lgm <-function(x, group, title="LGM", stars=TRUE, result = "html",
     prob.inds <- pnorm(z.w.groups, lower.tail = FALSE)*2
     prob.groups <- pnorm(z.b.groups, lower.tail = FALSE)*2
 
-    #significance starts
-    mystars.ind <- ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    "))
-    mystars.grp <- ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    "))
+    if(stars == 2) {
+      mystars.ind <- mystars.groups <- ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    "))
+      #footer for table
+      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
+    } else if(stars == 3) {
+      mystars.ind <- mystars.grp <- ifelse(prob.groups < .001, "*** ", ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    ")))
+      #footer for table
+      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
+    } else if(stars == 4) {
+      mystars.ind <- mystars.grp <- ifelse(prob.groups < .0001, "****", ifelse(prob.groups < .001, "*** ", ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    "))))
+      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
+
+    } else {
+      stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
+    }
+
+
 
     mystars.grp[lower.tri(mystars.grp, diag=FALSE)] <- ""
     mystars.ind[upper.tri(mystars.ind, diag=TRUE)] <- ""
