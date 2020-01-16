@@ -118,14 +118,14 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
     if(stars == 2) {
       mystars <- ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))
       #footer for table
-      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
+      footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
     } else if(stars == 3) {
       #footer for table
       mystars <- ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    ")))
-      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
+      footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
     } else if(stars == 4) {
       mystars <- ifelse(p < .0001, "****", ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))))
-      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
+      footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
 
     } else {
       stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
@@ -161,14 +161,14 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
         if(stars == 2) {
           mystars <- ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))
           #footer for table
-          footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
+          footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
         } else if(stars == 3) {
           #footer for table
           mystars <- ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    ")))
-          footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
+          footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
         } else if(stars == 4) {
           mystars <- ifelse(p.c < .0001, "****", ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))))
-          footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
+          footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
 
         } else {
           stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
@@ -248,9 +248,6 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
   cbind(mlm.iccs[-1], Rnew)
 }
 
-    #Proof of concept
-
-
     # end icc.corrs function
 }
 
@@ -269,8 +266,9 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
 #' @export
 
 
-corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alpha.order = F,
-                    stars = 2, result="html", sumstats=T, title="Correlation Table"){
+corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
+                    alpha.order = F,stars = 2, result="html", sumstats=T,
+                    title="Correlation Table") {
 
   #define magrittr pipe
   `%>%` <- magrittr::`%>%`
@@ -297,20 +295,18 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
   if(stars == 2) {
     mystars <- ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))
     #footer for table
-    footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
+    footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
   } else if(stars == 3) {
     #footer for table
-    footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
+    footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
     mystars <- ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    ")))
   } else if(stars == 4) {
     mystars <- ifelse(p < .0001, "****", ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))))
-    footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
+    footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
 
   } else {
     stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
   }
-
-
 
 
   R <- DescTools::Format(R, digits=2,leading="drop", na.form="--", sci = NA)
@@ -364,7 +360,7 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"), alp
       return(Rnew)
 
   } else if (result[1]=="html") {
-    knitr::kable(Rnew) %>%
+    knitr::kable(Rnew, type = "html", caption = title) %>%
       kableExtra::kable_styling(full_width = F) %>%
       kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = FALSE)
   } else {
@@ -496,16 +492,19 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
     prob.groups <- pnorm(z.b.groups, lower.tail = FALSE)*2
 
     if(stars == 2) {
-      mystars.ind <- mystars.groups <- ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    "))
+      mystars.ind <- ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    "))
+      mystars.grp <- ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    "))
       #footer for table
-      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01."
+      footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
     } else if(stars == 3) {
-      mystars.ind <- mystars.grp <- ifelse(prob.groups < .001, "*** ", ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    ")))
+      mystars.ind <- ifelse(prob.inds < .001, "*** ", ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    ")))
+      mystars.grp <- ifelse(prob.groups < .001, "*** ", ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    ")))
       #footer for table
-      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
+      footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
     } else if(stars == 4) {
-      mystars.ind <- mystars.grp <- ifelse(prob.groups < .0001, "****", ifelse(prob.groups < .001, "*** ", ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    "))))
-      footer <- "<i>Note</i>: *<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
+      mystars.ind <- ifelse(prob.inds < .0001, "****", ifelse(prob.inds < .001, "*** ", ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    "))))
+      mystars.grp <- ifelse(prob.groups < .0001, "****", ifelse(prob.groups < .001, "*** ", ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    "))))
+      footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
 
     } else {
       stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
