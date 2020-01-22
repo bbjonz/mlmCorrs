@@ -243,7 +243,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
                               "ICC(2)", rep(1:ncol(Rnew)))
 
     if(result=="html") {
-    knitr::kable(tablePrint, type = "html", escape = F,
+    knitr::kable(tablePrint, format = "html", escape = F,
                  caption = paste0("<b>", title, "</b>")) %>%
     kableExtra::kable_styling(bootstrap_options = "striped", full_width = F) %>%
     kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = F)
@@ -372,7 +372,7 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
       return(Rnew)
 
   } else if (result[1]=="html") {
-    knitr::kable(Rnew, type = "html", caption = title) %>%
+    knitr::kable(Rnew, format = "html", caption = title) %>%
       kableExtra::kable_styling(full_width = F) %>%
       kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = FALSE)
   } else {
@@ -565,7 +565,8 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
     rownames(matrix.out) <- paste(row.nums,". ", rownames(matrix.out), sep = "")
 
     if (result=="html") {
-    knitr::kable(matrix.out, caption = title, escape = F) %>%
+    knitr::kable(matrix.out, format = "html",
+                 caption = title, escape = F) %>%
       kableExtra::kable_styling(full_width = F) %>%
       kableExtra::footnote(general = table.footer, footnote_as_chunk = T, escape = FALSE)
     } else {
