@@ -14,6 +14,12 @@
 icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
                       stars = 2, alpha.order = FALSE, result = "html") {
 
+  list.of.packages <- c("tidyverse","psych","lme4","Hmisc","DescTools","knitr","kableExtra")
+  new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+  if(length(new.packages)) install.packages(new.packages)
+
+  options(scipen=999)
+
   # ungroup if original dataset is grouped
   if (dplyr::is.grouped_df(x)) {
 
@@ -270,6 +276,12 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
                     alpha.order = F,stars = 2, result="html", sumstats=T,
                     title="Correlation Table") {
 
+  list.of.packages <- c("tidyverse","psych","Hmisc","DescTools","knitr","kableExtra")
+  new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+  if(length(new.packages)) install.packages(new.packages)
+
+  options(scipen=999)
+
   #define magrittr pipe
   `%>%` <- magrittr::`%>%`
 
@@ -386,7 +398,12 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
 
 lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
                sumstats=TRUE, sumtable = FALSE, stars = 2, alpha.order = FALSE) {
+
   options(scipen=999)
+
+  list.of.packages <- c("tidyverse","lavaan","psych","Hmisc","DescTools","knitr","kableExtra")
+  new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+  if(length(new.packages)) install.packages(new.packages)
 
   #define magrittr pipe
   `%>%` <- magrittr::`%>%`
@@ -444,7 +461,6 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
     #prep varnames for next iteration through loop
     #this removes first word/variables
     varnames <- stringr::word(varnames, 2, -1)
-
 
     #reset dep and increment counter
     dep <- NULL
@@ -509,8 +525,6 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
     } else {
       stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
     }
-
-
 
     mystars.grp[lower.tri(mystars.grp, diag=FALSE)] <- ""
     mystars.ind[upper.tri(mystars.ind, diag=TRUE)] <- ""
