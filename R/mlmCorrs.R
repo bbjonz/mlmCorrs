@@ -58,7 +58,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
       dplyr::mutate(aov_obj = purrr::map(data, aov_model),
                     summaries = purrr::map(aov_obj,
                     broom.mixed::tidy)) %>%
-      tidyr::unnest(summaries, .drop = T) %>%
+      tidyr::unnest(summaries) %>%
       dplyr::select(type, effect, estimate,term) %>%
       dplyr::filter(effect != "fixed") %>%
       dplyr::mutate(variance = estimate^2) %>%
@@ -67,7 +67,8 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
       dplyr::rename(group.var = `sd__(Intercept)`,
                     residual = sd__Observation) %>%
       dplyr::mutate(ICC = group.var/(group.var + residual)) %>%
-      dplyr::mutate(ICC = DescTools::Format(ICC,digits = 2, leading = "drop"))
+      dplyr::mutate(ICC = sub("^(-?)0.", "\\1.", sprintf("%.2f", ICC)))
+      #dplyr::mutate(ICC = DescTools::Format(ICC,digits = 2, leading = "drop"))
 
     # get the ranova LRTs (and remove warnings from broom.mixed)
     options(warn = -1)
@@ -91,12 +92,12 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
         dplyr::left_join(., tests[c("type", "p.value")], by = "type") %>%
         dplyr::mutate(ICC2 = group.var/(group.var + residual/n)) %>%
         dplyr::select(type, mean, sd, ICC, p.value, ICC2) %>%
-        dplyr::mutate(mean = DescTools::Format(mean, digits = 2,
-                                               leading = "drop")) %>%
-        dplyr::mutate(sd = DescTools::Format(sd, digits = 2,
-                                             leading = "drop")) %>%
-        dplyr::mutate(ICC2 = DescTools::Format(ICC2,digits = 2,
-                                               leading = "drop")) %>%
+        dplyr::mutate(mean = sub("^(-?)0.", "\\1.", sprintf("%.2f", mean))) %>%
+        #dplyr::mutate(mean = DescTools::Format(mean, digits = 2, leading = "drop")) %>%
+        dplyr::mutate(sd = sub("^(-?)0.", "\\1.", sprintf("%.2f", sd))) %>%
+        #dplyr::mutate(sd = DescTools::Format(sd, digits = 2, leading = "drop")) %>%
+        dplyr::mutate(ICC2 = sub("^(-?)0.", "\\1.", sprintf("%.2f", ICC2))) %>%
+        #dplyr::mutate(ICC2 = DescTools::Format(ICC2,digits = 2, leading = "drop")) %>%
         dplyr::mutate(ICC1 = ifelse(p.value < 0.01, paste0(ICC, "**"),
                                          ifelse(p.value < 0.05,
                                                 paste0(ICC,"*"),ICC))) %>%
@@ -112,7 +113,6 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
     if (alpha.order) {
         cor.vars <- cor.vars %>% dplyr::select(sort(names(.)))
     }
-
 
     # Compute correlation matrix
     cor.vars <- as.matrix(cor.vars)
@@ -161,19 +161,19 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
         correlation_matrix.c <- Hmisc::rcorr(as.matrix(cor.vars.c,
                                                        type = "pearson"))
 
-        R.c <- correlation_matrix.c$r  # Matrix of correlation coeficients
+        R.c <- correlation_matrix.c$r  # Matrix of correlation coefficients
         p.c <- correlation_matrix.c$P  # Matrix of p-value
 
         if(stars == 2) {
-          mystars <- ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))
+          mystars.c <- ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))
           #footer for table
           footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
         } else if(stars == 3) {
           #footer for table
-          mystars <- ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    ")))
+          mystars.c <- ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    ")))
           footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
         } else if(stars == 4) {
-          mystars <- ifelse(p.c < .0001, "****", ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))))
+          mystars.c <- ifelse(p.c < .0001, "****", ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))))
           footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
 
         } else {
@@ -188,7 +188,8 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
 
         R <- R + R.c
 
-        R <- DescTools::Format(R, digits = 2, leading = "drop")
+        #R <- DescTools::Format(R, digits = 2, leading = "drop")
+        R <- matrix(sub("^(-?)0.", "\\1.", sprintf("%.2f", R)), nrow = nrow(R))
 
         all.stars <- matrix(paste0(mystars, mystars.c), ncol = ncol(R.c))
 
@@ -202,7 +203,8 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
     } else {
 
         # easy way to get 2 decimals and drop leading 0
-        R <- DescTools::Format(R, digits = 2, leading = "drop")
+        #R <- DescTools::Format(R, digits = 2, leading = "drop")
+        R <- matrix(sub("^(-?)0.", "\\1.", sprintf("%.2f", R)), nrow = nrow(R))
 
         ## build a new matrix that includes the correlations with their apropriate stars
         Rnew <- matrix(paste(R, mystars, sep = ""), ncol = ncol(cor.vars))
@@ -321,7 +323,10 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
   }
 
 
-  R <- DescTools::Format(R, digits=2,leading="drop", na.form="--", sci = NA)
+
+  #R <- DescTools::Format(R, digits=2,leading="drop", na.form="--", sci = NA)
+  R <- matrix(sub("^(-?)0.", "\\1.", sprintf("%.2f", R)), nrow = nrow(R))
+
   #print(R)
 
   ## build a new matrix that includes the correlations with their appropriate stars
@@ -350,10 +355,13 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
   colnames(Rnew) <- as.character(col.nums)
   diag(Rnew) <- "--"
 
+
   if(sumstats) {
     #get just the mean and SD
-    tempstats <- as.data.frame(psych::describe(tempdf))[3:4]
-    tempstats <- DescTools::Format(tempstats, digits=2, na.form="")
+    tempstats <- data.frame(mean=colMeans(tempdf, na.rm = T), sd=apply(tempdf, 2, sd, na.rm = T))
+    #tempstats <- as.data.frame(psych::describe(tempdf))[3:4]
+    tempstats <- as.data.frame(lapply(tempstats, sprintf, fmt="%.2f"))
+    #tempstats <- DescTools::Format(tempstats, digits=2, na.form="")
 
     #insert descriptive stats at front of table
     Rnew <- cbind(tempstats, Rnew)
@@ -495,7 +503,11 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
        diag(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[1]]))))
 
   #removes leading zeros and rounds to two decimal places
-  all.corrs.sem <- DescTools::Format(all.corrs.sem, digits=2,leading="drop", na.form="--")
+  #all.corrs.sem <- DescTools::Format(all.corrs.sem, digits=2,leading="drop", na.form="--")
+  all.corrs.sem <- matrix(sub("^(-?)0.", "\\1.", sprintf("%.2f", all.corrs.sem)), nrow = nrow(all.corrs.sem))
+
+  rownames(all.corrs.sem) <- rownames(ind)
+  colnames(all.corrs.sem) <- colnames(ind)
 
   #include stars by default
   if(printstars) {
@@ -548,11 +560,19 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
 
   if(sumstats) {
     #get just the mean and SD
-    tempstats <- as.data.frame(psych::describe(tempdf))[3:4]
-    tempstats <- DescTools::Format(tempstats, digits=2, na.form="")
+    tempstats <- data.frame(mean=colMeans(tempdf, na.rm = T), sd=apply(tempdf, 2, sd, na.rm = T))
+    tempstats <- as.data.frame(lapply(tempstats, sprintf, fmt="%.2f"))
+
+    #tempstats <- as.data.frame(psych::describe(tempdf))[3:4]
+    #tempstats <- DescTools::Format(tempstats, digits=2, na.form="")
 
     #insert descriptive stats at front of table
     matrix.out <- cbind(tempstats, matrix.out)
+
+    rownames(matrix.out) <- rownames(ind)
+    #print(matrix.out)
+    #stop()
+
     #process header info
     names(matrix.out) <- c("Mean","SD",rep(1:ncol(all.corrs.sem)))
 }
