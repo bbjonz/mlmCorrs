@@ -14,7 +14,7 @@
 icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
                       stars = 2, alpha.order = FALSE, result = "html") {
 
-  list.of.packages <- c("tidyverse","psych","lme4","Hmisc","DescTools","knitr","kableExtra")
+  list.of.packages <- c("tidyverse","psych","lme4","Hmisc","DescTools","knitr","kableExtra","gt")
   new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
   if(length(new.packages)) install.packages(new.packages)
 
@@ -245,10 +245,21 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
                               "ICC(2)", rep(1:ncol(Rnew)))
 
     if(result=="html") {
-    knitr::kable(tablePrint, format = "html", escape = F,
-                 caption = paste0("<b>", title, "</b>")) %>%
-    kableExtra::kable_styling(bootstrap_options = "striped", full_width = F) %>%
-    kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = F)
+      tablePrint %>%
+        tibble::rownames_to_column(.,"Variable") %>%
+        gt::gt() %>%
+        gt::tab_options(table.border.bottom.width = "0px",
+                        table.border.top.width = "0px",
+                        heading.align = "left") %>%
+        gt::tab_header(title = title) %>%
+        gt::tab_source_note(
+          source_note = gt::html(c("<i>Note</i>. ", footer))
+        )
+
+    #   knitr::kable(tablePrint, format = "html", escape = F,
+    #              caption = paste0("<b>", title, "</b>")) %>%
+    # kableExtra::kable_styling(bootstrap_options = "striped", full_width = F) %>%
+    # kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = F)
 
     } else if (result[1]=="text") {
     return(tablePrint)
@@ -278,7 +289,7 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
                     alpha.order = F,stars = 2, result="html", sumstats=T,
                     title="Correlation Table") {
 
-  list.of.packages <- c("tidyverse","psych","Hmisc","DescTools","knitr","kableExtra")
+  list.of.packages <- c("tidyverse","psych","Hmisc","DescTools","knitr","kableExtra","gt")
   new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
   if(length(new.packages)) install.packages(new.packages)
 
@@ -380,9 +391,19 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
       return(Rnew)
 
   } else if (result[1]=="html") {
-    knitr::kable(Rnew, format = "html", caption = title) %>%
-      kableExtra::kable_styling(full_width = F) %>%
-      kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = FALSE)
+    Rnew %>%
+      tibble::rownames_to_column(.,"Variable") %>%
+    gt::gt() %>%
+      gt::tab_options(table.border.bottom.width = "0px",
+                  table.border.top.width = "0px",
+                  heading.align = "left") %>%
+      gt::tab_header(title = title) %>%
+      gt::tab_source_note(
+        source_note = gt::html(c("<i>Note</i>. ", footer))
+      )
+    #knitr::kable(Rnew, format = "html", caption = title) %>%
+     # kableExtra::kable_styling(full_width = F) %>%
+      #kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = FALSE)
   } else {
     xtable::xtable(Rnew, type="latex")
   }
@@ -491,19 +512,18 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
 
   #now build and output LGM matrix
   #correlations printed but significance for covariances
-  ind <- cov2cor(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[1]])))
-  grp <- cov2cor(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[2]])))
+  ind <- cov2cor(as.matrix(as.data.frame(lavInspect(model.out,"cov.ov")[[1]])))
+  grp <- cov2cor(as.matrix(as.data.frame(lavInspect(model.out,"cov.ov")[[2]])))
 
   all.corrs.sem <- ind*0
   ind[upper.tri(ind, diag = TRUE)] <- 0
   grp[lower.tri(grp, diag = TRUE)] <- 0
   all.corrs.sem <- ind + grp
-  diag(all.corrs.sem) <- diag(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[2]])))/
-    (diag(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[2]])))+
-       diag(as.matrix(as.data.frame(inspect(model.out,"cov.ov")[[1]]))))
+  diag(all.corrs.sem) <- diag(as.matrix(as.data.frame(lavInspect(model.out,"cov.ov")[[2]])))/
+    (diag(as.matrix(as.data.frame(lavInspect(model.out,"cov.ov")[[2]])))+
+       diag(as.matrix(as.data.frame(lavInspect(model.out,"cov.ov")[[1]]))))
 
   #removes leading zeros and rounds to two decimal places
-  #all.corrs.sem <- DescTools::Format(all.corrs.sem, digits=2,leading="drop", na.form="--")
   all.corrs.sem <- matrix(sub("^(-?)0.", "\\1.", sprintf("%.2f", all.corrs.sem)), nrow = nrow(all.corrs.sem))
 
   rownames(all.corrs.sem) <- rownames(ind)
@@ -512,7 +532,7 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
   #include stars by default
   if(printstars) {
     z.w.groups <- lavInspect(model.out, "est")$within$theta/lavInspect(model.out, "se")$within$theta
-    z.b.groups <- as.matrix(as.data.frame(inspect(model.out, "est")[[2]]["theta"]))/as.matrix(as.data.frame(inspect(model.out, "se")[[2]]["theta"]))
+    z.b.groups <- as.matrix(as.data.frame(lavInspect(model.out, "est")[[2]]["theta"]))/as.matrix(as.data.frame(lavInspect(model.out, "se")[[2]]["theta"]))
 
     #get table of probabilities
     #diag is for the variances
@@ -520,18 +540,28 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
     prob.groups <- pnorm(z.b.groups, lower.tail = FALSE)*2
 
     if(stars == 2) {
-      mystars.ind <- ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    "))
-      mystars.grp <- ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    "))
+      mystars.ind <- ifelse(prob.inds < .01, "**  ",
+                            ifelse(prob.inds < .05, "*   ", "    "))
+      mystars.grp <- ifelse(prob.groups < .01, "**  ",
+                            ifelse(prob.groups < .05, "*   ", "    "))
       #footer for table
       footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
     } else if(stars == 3) {
-      mystars.ind <- ifelse(prob.inds < .001, "*** ", ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    ")))
-      mystars.grp <- ifelse(prob.groups < .001, "*** ", ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    ")))
+      mystars.ind <- ifelse(prob.inds < .001, "*** ",
+                            ifelse(prob.inds < .01, "**  ",
+                                   ifelse(prob.inds < .05, "*   ", "    ")))
+      mystars.grp <- ifelse(prob.groups < .001, "*** ",
+                            ifelse(prob.groups < .01, "**  ",
+                                   ifelse(prob.groups < .05, "*   ", "    ")))
       #footer for table
       footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
     } else if(stars == 4) {
-      mystars.ind <- ifelse(prob.inds < .0001, "****", ifelse(prob.inds < .001, "*** ", ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    "))))
-      mystars.grp <- ifelse(prob.groups < .0001, "****", ifelse(prob.groups < .001, "*** ", ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    "))))
+      mystars.ind <- ifelse(prob.inds < .0001, "****",
+                            ifelse(prob.inds < .001, "*** ",
+                                   ifelse(prob.inds < .01, "**  ", ifelse(prob.inds < .05, "*   ", "    "))))
+      mystars.grp <- ifelse(prob.groups < .0001, "****",
+                            ifelse(prob.groups < .001, "*** ",
+                                   ifelse(prob.groups < .01, "**  ", ifelse(prob.groups < .05, "*   ", "    "))))
       footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
 
     } else {
@@ -548,7 +578,8 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
     #format diagonal with bold
     if (result=="html") {
     matrix.d <- diag(matrix.out)
-    matrix.d <- kableExtra::text_spec(matrix.d, "html", bold = TRUE)
+    #matrix.d <- paste0("<b>",matrix.d,"</b>")
+    #matrix.d <- kableExtra::text_spec(matrix.d, "html", bold = TRUE)
     diag(matrix.out) <- matrix.d
     }
 
@@ -584,11 +615,28 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
 
     rownames(matrix.out) <- paste(row.nums,". ", rownames(matrix.out), sep = "")
 
+    #note: gt package doesn't allow for bolding the diagonals yet.  Working on it.
     if (result=="html") {
-    knitr::kable(matrix.out, format = "html",
-                 caption = title, escape = F) %>%
-      kableExtra::kable_styling(full_width = F) %>%
-      kableExtra::footnote(general = table.footer, footnote_as_chunk = T, escape = FALSE)
+      matrix.out %>%
+        tibble::rownames_to_column(.,"Variable") %>%
+        gt::gt () %>%
+        gt::tab_options(table.border.bottom.width = "0px",
+                        table.border.top.width = "0px",
+                        heading.align = "left") %>%
+        # gt::tab_style(
+        #   style = gt::cell_text(weight = "bold"),
+        #   locations = gt::cells_body(
+        #     columns = vars(Mean),
+        #     rows = Mean >= 25)) %>%
+        gt::tab_header(title = title) %>%
+        gt::tab_source_note(
+          source_note = gt::html(c("<i>Note</i>. ", footer))
+        )
+
+      # knitr::kable(matrix.out, format = "html",
+    #              caption = title, escape = F) %>%
+    #   kableExtra::kable_styling(full_width = F) %>%
+    #   kableExtra::footnote(general = table.footer, footnote_as_chunk = T, escape = FALSE)
     } else {
       return(matrix.out)
     }
