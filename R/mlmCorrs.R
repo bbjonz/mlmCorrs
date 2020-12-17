@@ -8,11 +8,15 @@
 #' @param stars Number of significance stars.  Default is 2, max is 4 (p < .0001)
 #' @param alpha.order Sort variables alphabetically.  Default is False
 #' @param result Output options.  Default is kable to viewer.  Option "text" returns output to console only.
+#' @param icc2 Report ICC2 (Bliese).  Default is not
 #' @return A correlation table with sample statistics and ICC estimates
 #' @export
 
-icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
-                      stars = 2, alpha.order = FALSE, result = "html") {
+# Descriptive Stats with ICCs and Correlations ####
+icc.corrs <- function(x, group, title = "Descriptive Stats",
+                      gmc = FALSE, stars = 2,
+                      alpha.order = FALSE, result = "html",
+                      icc2 = FALSE) {
 
   list.of.packages <- c("tidyverse","psych","lme4","Hmisc","DescTools","knitr","kableExtra","gt")
   new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -238,11 +242,18 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
                                                             2, nchar(tablenames)))
 
     # bind the correlation tables and provide row/col names
+    # ICC2 not reported by default
     cbind(mlm.iccs[-1], Rnew)
     tablePrint <- cbind(mlm.iccs[-1], Rnew)
     row.names(tablePrint) <- paste0(1:nrow(Rnew), ". ", tablenames)
     colnames(tablePrint) <- c("Mean", "SD", "ICC(1)",
                               "ICC(2)", rep(1:ncol(Rnew)))
+
+    if (!icc2) {
+      tablePrint %>%
+        dplyr::select(-"ICC(2)") %>%
+        dplyr::rename(ICC = "ICC(1)") -> tablePrint
+    }
 
     if(result=="html") {
       tablePrint %>%
@@ -270,7 +281,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats", gmc = FALSE,
     # end icc.corrs function
 }
 
-
+# APA Correlation Table ####
 #' Corstars
 #'
 #' This function creates the ICC matrix
@@ -410,8 +421,7 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
   #ends function
 }
 
-#' Latent Group Model
-#'
+# Latent Group Model ####
 #' This function creates the LGM matrix
 #' @param x Data object.
 #' @param group Nesting variable.
