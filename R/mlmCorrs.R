@@ -36,8 +36,16 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
     # define magrittr pipe
     `%>%` <- magrittr::`%>%`
 
+    #count number of groups and individuals
+    #n.groups <- length(unique(x$group))
+    #n.inds <- nrow(x)
+    #print(n.groups)
+    #print(n.inds)
+
+
     # create the long file for the ICC routine/function default behavior is to sort alphabetically the else
     # routine keeps original variable order
+    # Need to switch to pivot_
     if (alpha.order) {
         long.dat <- x %>% tidyr::gather(type, score, -group)
     } else {
@@ -47,32 +55,47 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
     }
 
     # New tidyverse version of mlm.iccs
+    # Get model estimates
     aov_model <- function(df) {
         lmr.model <- lmerTest::lmer(score ~ 1 + (1 | group), data = df)
     }
 
+    #Get random effect signficance test
     aov_test <- function(df) {
         lmr.model <- lmerTest::lmer(score ~ 1 + (1 | group), data = df)
         ll.test <- lmerTest::ranova(lmr.model)
+    }
+
+    #get sample size for both levels
+    aov_model.ss <- function(df) {
+      lmr.model <- lmerTest::lmer(score ~ 1 + (1 | group), data = df)
+      size = c(NA, lmr.model@pp$Ut@Dim[1], lmr.model@pp$Ut@Dim[2])
+      return(data.frame(size))
     }
 
     # get the model estimates
     models <- long.dat %>%
       tidyr::nest(-type) %>%
       dplyr::mutate(aov_obj = purrr::map(data, aov_model),
+                    sampsize = purrr::map(data, aov_model.ss),
                     summaries = purrr::map(aov_obj,
                     broom.mixed::tidy)) %>%
-      tidyr::unnest(summaries) %>%
-      dplyr::select(type, effect, estimate,term) %>%
+      tidyr::unnest(c(summaries, sampsize)) %>%
+      dplyr::select(type, effect, estimate, group, size) %>%
       dplyr::filter(effect != "fixed") %>%
       dplyr::mutate(variance = estimate^2) %>%
       dplyr::select(-estimate,-effect) %>%
-      tidyr::spread(term, variance) %>%
-      dplyr::rename(group.var = `sd__(Intercept)`,
-                    residual = sd__Observation) %>%
+      #dplyr::mutate()
+      tidyr::pivot_wider(id_cols=type, values_from = c(variance, size),
+                         names_from = group) %>%
+      dplyr::rename(group.var = variance_group,
+                    residual = variance_Residual,
+                    "N Groups" = size_group,
+                    "Total N" = size_Residual) %>%
       dplyr::mutate(ICC = group.var/(group.var + residual)) %>%
       dplyr::mutate(ICC = sub("^(-?)0.", "\\1.", sprintf("%.2f", ICC)))
       #dplyr::mutate(ICC = DescTools::Format(ICC,digits = 2, leading = "drop"))
+#print(models)
 
     # get the ranova LRTs (and remove warnings from broom.mixed)
     options(warn = -1)
@@ -95,7 +118,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
         dplyr::left_join(., models, by = "type") %>%
         dplyr::left_join(., tests[c("type", "p.value")], by = "type") %>%
         dplyr::mutate(ICC2 = group.var/(group.var + residual/n)) %>%
-        dplyr::select(type, mean, sd, ICC, p.value, ICC2) %>%
+        dplyr::select(type, "N Groups", "Total N", mean, sd, ICC, p.value, ICC2) %>%
         dplyr::mutate(mean = sub("^(-?)0.", "\\1.", sprintf("%.2f", mean))) %>%
         #dplyr::mutate(mean = DescTools::Format(mean, digits = 2, leading = "drop")) %>%
         dplyr::mutate(sd = sub("^(-?)0.", "\\1.", sprintf("%.2f", sd))) %>%
@@ -105,9 +128,9 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
         dplyr::mutate(ICC1 = ifelse(p.value < 0.01, paste0(ICC, "**"),
                                          ifelse(p.value < 0.05,
                                                 paste0(ICC,"*"),ICC))) %>%
-        dplyr::select(type, mean, sd, ICC1, ICC2)
+        dplyr::select(type, "N Groups", "Total N", mean, sd, ICC1, ICC2)
 
-    mlm.iccs
+    #print(mlm.iccs)
     # Adapted from the corstars function https://github.com/Cogitos/statxp/blob/master/R/corstars.R
 
     # select the variables to be correlated
@@ -246,7 +269,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
     cbind(mlm.iccs[-1], Rnew)
     tablePrint <- cbind(mlm.iccs[-1], Rnew)
     row.names(tablePrint) <- paste0(1:nrow(Rnew), ". ", tablenames)
-    colnames(tablePrint) <- c("Mean", "SD", "ICC(1)",
+    colnames(tablePrint) <- c("N Groups", "Total N", "Mean", "SD", "ICC(1)",
                               "ICC(2)", rep(1:ncol(Rnew)))
 
     if (!icc2) {
@@ -258,11 +281,11 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
     if(result=="html") {
       tablePrint %>%
         tibble::rownames_to_column(.,"Variable") %>%
-        gt::gt() %>%
+        gt::gt(caption = title) %>%
         gt::tab_options(table.border.bottom.width = "0px",
                         table.border.top.width = "0px",
                         heading.align = "left") %>%
-        gt::tab_header(title = title) %>%
+        #gt::tab_header(title = title) %>%
         gt::tab_source_note(
           source_note = gt::html(c("<i>Note</i>. ", footer))
         )
