@@ -45,11 +45,10 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 
     # create the long file for the ICC routine/function default behavior is to sort alphabetically the else
     # routine keeps original variable order
-    # Need to switch to pivot_
     if (alpha.order) {
-        long.dat <- x %>% tidyr::gather(type, score, -group)
+        long.dat <- x %>% tidyr::pivot_longer(!group, names_to="type", values_to="score")
     } else {
-        long.dat <- x %>% tidyr::gather(type, score, -group) %>%
+        long.dat <- x %>% tidyr::pivot_longer(!group, names_to="type", values_to="score") %>%
           dplyr::mutate(type = factor(type, levels = names(subset(x,
             select = -group))))  # add this line to convert the key to a factor
     }
@@ -60,7 +59,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
         lmr.model <- lmerTest::lmer(score ~ 1 + (1 | group), data = df)
     }
 
-    #Get random effect signficance test
+    #Get random effect significance test
     aov_test <- function(df) {
         lmr.model <- lmerTest::lmer(score ~ 1 + (1 | group), data = df)
         ll.test <- lmerTest::ranova(lmr.model)
