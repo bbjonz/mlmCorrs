@@ -402,7 +402,8 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
 
   if(sumstats) {
     #get just the mean and SD
-    tempstats <- data.frame(mean=colMeans(tempdf, na.rm = T), sd=apply(tempdf, 2, sd, na.rm = T))
+    tempstats <- data.frame(mean=colMeans(tempdf, na.rm = T), sd=apply(tempdf, 2, sd, na.rm = T),
+                            n = nrow(tempdf))
     #tempstats <- as.data.frame(psych::describe(tempdf))[3:4]
     tempstats <- as.data.frame(lapply(tempstats, sprintf, fmt="%.2f"))
     #tempstats <- DescTools::Format(tempstats, digits=2, na.form="")
@@ -410,7 +411,7 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
     #insert descriptive stats at front of table
     Rnew <- cbind(tempstats, Rnew)
     #provide column names
-    names(Rnew) <- c("Mean","SD",rep(1:ncol(R)))
+    names(Rnew) <- c("Mean","SD", "N", rep(1:ncol(R)))
   }
 
   #process row names
@@ -431,6 +432,18 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
                   table.border.top.width = "0px",
                   heading.align = "left") %>%
       gt::tab_header(title = title) %>%
+
+      cols_align(
+        align = "center",
+        columns = everything()
+      ) %>%
+
+      cols_align(
+        align = "left",
+        columns = Variable
+      ) %>%
+
+
       gt::tab_source_note(
         source_note = gt::html(c("<i>Note</i>. ", footer))
       )
