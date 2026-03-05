@@ -36,13 +36,6 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
     # define magrittr pipe
     `%>%` <- magrittr::`%>%`
 
-    #count number of groups and individuals
-    #n.groups <- length(unique(x$group))
-    #n.inds <- nrow(x)
-    #print(n.groups)
-    #print(n.inds)
-
-
     # create the long file for the ICC routine/function default behavior is to sort alphabetically the else
     # routine keeps original variable order
     if (alpha.order) {
@@ -84,7 +77,6 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
       dplyr::filter(effect != "fixed") %>%
       dplyr::mutate(variance = estimate^2) %>%
       dplyr::select(-estimate,-effect) %>%
-      #dplyr::mutate()
       tidyr::pivot_wider(id_cols=type, values_from = c(variance, size),
                          names_from = group) %>%
       dplyr::rename(group.var = variance_group,
@@ -93,8 +85,6 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
                     "Total N" = size_Residual) %>%
       dplyr::mutate(ICC = group.var/(group.var + residual)) %>%
       dplyr::mutate(ICC = sub("^(-?)0.", "\\1.", sprintf("%.2f", ICC)))
-      #dplyr::mutate(ICC = DescTools::Format(ICC,digits = 2, leading = "drop"))
-#print(models)
 
     # get the ranova LRTs (and remove warnings from broom.mixed)
     options(warn = -1)
@@ -112,18 +102,14 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
       na.omit %>%
       dplyr::summarise(mean = mean(score, na.rm = T),
         sd = sd(score, na.rm = T), n = n()/dplyr::n_distinct(group)) %>%
-      # dataframe needed because descTools chokes without it
         as.data.frame() %>%
         dplyr::left_join(., models, by = "type") %>%
         dplyr::left_join(., tests[c("type", "p.value")], by = "type") %>%
         dplyr::mutate(ICC2 = group.var/(group.var + residual/n)) %>%
         dplyr::select(type, "N Groups", "Total N", mean, sd, ICC, p.value, ICC2) %>%
         dplyr::mutate(mean = sub("^(-?)0.", "\\1.", sprintf("%.2f", mean))) %>%
-        #dplyr::mutate(mean = DescTools::Format(mean, digits = 2, leading = "drop")) %>%
         dplyr::mutate(sd = sub("^(-?)0.", "\\1.", sprintf("%.2f", sd))) %>%
-        #dplyr::mutate(sd = DescTools::Format(sd, digits = 2, leading = "drop")) %>%
         dplyr::mutate(ICC2 = sub("^(-?)0.", "\\1.", sprintf("%.2f", ICC2))) %>%
-        #dplyr::mutate(ICC2 = DescTools::Format(ICC2,digits = 2, leading = "drop")) %>%
         dplyr::mutate(ICC1 = ifelse(p.value < 0.01, paste0(ICC, "**"),
                                          ifelse(p.value < 0.05,
                                                 paste0(ICC,"*"),ICC))) %>%
@@ -191,15 +177,22 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
         p.c <- correlation_matrix.c$P  # Matrix of p-value
 
         if(stars == 2) {
-          mystars.c <- ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))
+          mystars.c <- ifelse(p.c < .01,
+                              "**  ",
+                              ifelse(p.c < .05, "*   ", "    "))
           #footer for table
           footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
         } else if(stars == 3) {
           #footer for table
-          mystars.c <- ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    ")))
+          mystars.c <- ifelse(p.c < .001, "*** ",
+                              ifelse(p.c < .01,"**  ",
+                                     ifelse(p.c < .05, "*   ", "    ")))
           footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
         } else if(stars == 4) {
-          mystars.c <- ifelse(p.c < .0001, "****", ifelse(p.c < .001, "*** ", ifelse(p.c < .01, "**  ", ifelse(p.c < .05, "*   ", "    "))))
+          mystars.c <- ifelse(p.c < .0001, "****",
+                              ifelse(p.c < .001, "*** ",
+                                     ifelse(p.c < .01, "**  ",
+                                            ifelse(p.c < .05, "*   ", "    "))))
           footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
 
         } else {
@@ -229,7 +222,6 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
     } else {
 
         # easy way to get 2 decimals and drop leading 0
-        #R <- DescTools::Format(R, digits = 2, leading = "drop")
         R <- matrix(sub("^(-?)0.", "\\1.", sprintf("%.2f", R)), nrow = nrow(R))
 
         ## build a new matrix that includes the correlations with their apropriate stars
@@ -289,18 +281,13 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
           source_note = gt::html(c("<i>Note</i>. ", footer))
         )
 
-    #   knitr::kable(tablePrint, format = "html", escape = F,
-    #              caption = paste0("<b>", title, "</b>")) %>%
-    # kableExtra::kable_styling(bootstrap_options = "striped", full_width = F) %>%
-    # kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = F)
-
     } else if (result[1]=="text") {
     return(tablePrint)
 } else {
   cbind(mlm.iccs[-1], Rnew)
 }
 
-    # end icc.corrs function
+    # ends the icc.corrs function
 }
 
 # APA Correlation Table ####
@@ -348,30 +335,33 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
   correlation_matrix<-Hmisc::rcorr(x, type=method[1])
   R <- correlation_matrix$r # Matrix of correlation coeficients
   p <- correlation_matrix$P # Matrix of p-value
+  ntemp <- correlation_matrix$n
 
   #define significance stars
   if(stars == 2) {
-    mystars <- ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))
+    mystars <- ifelse(p < .01, "**  ",
+                      ifelse(p < .05, "*   ", "    "))
     #footer for table
     footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
   } else if(stars == 3) {
     #footer for table
     footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p<i/> < .001. "
-    mystars <- ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    ")))
+    mystars <- ifelse(p < .001, "*** ",
+                      ifelse(p < .01, "**  ",
+                             ifelse(p < .05, "*   ", "    ")))
   } else if(stars == 4) {
-    mystars <- ifelse(p < .0001, "****", ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))))
+    mystars <- ifelse(p < .0001, "****",
+                      ifelse(p < .001, "*** ",
+                             ifelse(p < .01, "**  ",
+                                    ifelse(p < .05, "*   ", "    "))))
     footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
 
   } else {
     stop("You requested more than 4 significance stars.  Please provide a valid number between 2 and 4")
   }
 
-
-
   #R <- DescTools::Format(R, digits=2,leading="drop", na.form="--", sci = NA)
   R <- matrix(sub("^(-?)0.", "\\1.", sprintf("%.2f", R)), nrow = nrow(R))
-
-  #print(R)
 
   ## build a new matrix that includes the correlations with their appropriate stars
   Rnew <- matrix(paste0(R, mystars), ncol=ncol(x))
@@ -399,17 +389,17 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
   colnames(Rnew) <- as.character(col.nums)
   diag(Rnew) <- "--"
 
-
   if(sumstats) {
     #get just the mean and SD
-    tempstats <- data.frame(mean=colMeans(tempdf, na.rm = T), sd=apply(tempdf, 2, sd, na.rm = T),
-                            n = nrow(tempdf))
-    #tempstats <- as.data.frame(psych::describe(tempdf))[3:4]
+    tempstats <- data.frame(mean=colMeans(tempdf, na.rm = T),
+                            sd=apply(tempdf, 2, sd, na.rm = T),
+                            n = diag(ntemp))
+
     tempstats <- as.data.frame(lapply(tempstats, sprintf, fmt="%.2f"))
-    #tempstats <- DescTools::Format(tempstats, digits=2, na.form="")
 
     #insert descriptive stats at front of table
     Rnew <- cbind(tempstats, Rnew)
+
     #provide column names
     names(Rnew) <- c("Mean","SD", "N", rep(1:ncol(R)))
   }
@@ -433,27 +423,24 @@ corstars <-function(x, method="pearson", removeTriangle=c("upper", "lower"),
                   heading.align = "left") %>%
       gt::tab_header(title = title) %>%
 
-      cols_align(
+      gt::cols_align(
         align = "center",
         columns = everything()
       ) %>%
 
-      cols_align(
+      gt::cols_align(
         align = "left",
         columns = Variable
       ) %>%
 
-
       gt::tab_source_note(
         source_note = gt::html(c("<i>Note</i>. ", footer))
       )
-    #knitr::kable(Rnew, format = "html", caption = title) %>%
-     # kableExtra::kable_styling(full_width = F) %>%
-      #kableExtra::footnote(general = footer, footnote_as_chunk = T, escape = FALSE)
+
   } else {
     xtable::xtable(Rnew, type="latex")
   }
-  #ends function
+  #ends corstars function
 }
 
 # Latent Group Model ####
@@ -520,8 +507,6 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
   y=1
 
   while (y < varnum) {
-    #message(print(varnames))
-
 
     #set up left side of equation
     dep <- sub(" +","~~", varnames)
@@ -623,8 +608,6 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
     #format diagonal with bold
     if (result=="html") {
     matrix.d <- diag(matrix.out)
-    #matrix.d <- paste0("<b>",matrix.d,"</b>")
-    #matrix.d <- kableExtra::text_spec(matrix.d, "html", bold = TRUE)
     diag(matrix.out) <- matrix.d
     }
 
@@ -647,7 +630,6 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
 
     rownames(matrix.out) <- rownames(ind)
     #print(matrix.out)
-    #stop()
 
     #process header info
     names(matrix.out) <- c("Mean","SD",rep(1:ncol(all.corrs.sem)))
@@ -668,20 +650,12 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
         gt::tab_options(table.border.bottom.width = "0px",
                         table.border.top.width = "0px",
                         heading.align = "left") %>%
-        # gt::tab_style(
-        #   style = gt::cell_text(weight = "bold"),
-        #   locations = gt::cells_body(
-        #     columns = vars(Mean),
-        #     rows = Mean >= 25)) %>%
         gt::tab_header(title = title) %>%
         gt::tab_source_note(
           source_note = gt::html(c("<i>Note</i>. ", footer))
         )
 
-      # knitr::kable(matrix.out, format = "html",
-    #              caption = title, escape = F) %>%
-    #   kableExtra::kable_styling(full_width = F) %>%
-    #   kableExtra::footnote(general = table.footer, footnote_as_chunk = T, escape = FALSE)
+
     } else {
       return(matrix.out)
     }
