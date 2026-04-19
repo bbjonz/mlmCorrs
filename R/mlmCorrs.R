@@ -493,6 +493,7 @@ corstars <- function(x,
   return(out)
 }
 
+
 # Latent Group Model ####
 #' This function creates the LGM matrix
 #' @param x Data object.
