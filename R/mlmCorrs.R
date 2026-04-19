@@ -664,16 +664,8 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
 
 
 
+# APA Correlation Table Groups ####
 
-corstars_groups <- function(x,
-                          method = "pearson",
-                          removeTriangle = c("upper", "lower"),
-                          alpha.order = FALSE,
-                          stars = 2,
-                          result = "html",
-                          sumstats = TRUE,
-                          title = "Correlation Table",
-                          group = NULL) {
   #' Create an APA-style correlation table with optional group stacking
   #'
   #' @param x Data frame of numeric variables.
@@ -689,6 +681,17 @@ corstars_groups <- function(x,
   #'   If provided, a stacked gt table is produced with one section per group.
   #'
   #' @return A gt table object or data frame depending on result argument.
+
+
+corstars_groups <- function(x,
+                            method = "pearson",
+                            removeTriangle = c("upper", "lower"),
+                            alpha.order = FALSE,
+                            stars = 2,
+                            result = "html",
+                            sumstats = TRUE,
+                            title = "Correlation Table",
+                            group = NULL) {
 
   options(scipen = 999)
 
@@ -842,5 +845,5 @@ corstars_groups <- function(x,
     }
   }
 
-  out
+  return(out)
 }
