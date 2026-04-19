@@ -662,7 +662,11 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
   #ends the lgm function
 }
 
-corstars_test <- function(x,
+
+# APA Correlation Table Groups ####
+
+
+corstars_groups <- function(x,
                           method = "pearson",
                           removeTriangle = c("upper", "lower"),
                           alpha.order = FALSE,
