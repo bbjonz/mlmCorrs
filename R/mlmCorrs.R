@@ -293,15 +293,16 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 
 # APA Correlation Table Groups ####
 
-corstars <- function(x,
-                     method = "pearson",
-                     removeTriangle = c("upper", "lower"),
-                     alpha.order = FALSE,
-                     stars = 2,
-                     result = "html",
-                     sumstats = TRUE,
-                     title = "Correlation Table",
-                     group = NULL) {
+corstars_shit <- function(x,
+                          method = "pearson",
+                          removeTriangle = c("upper", "lower"),
+                          alpha.order = FALSE,
+                          stars = 2,
+                          result = "html",
+                          sumstats = TRUE,
+                          title = "Correlation Table",
+                          group = NULL,
+                          decimals = 2) {
 
   #' Create an APA-style correlation table with optional group stacking
   #'
@@ -316,12 +317,13 @@ corstars <- function(x,
   #' @param title Character string for the table title.
   #' @param group Optional character string naming a grouping column in x.
   #'   If provided, a stacked gt table is produced with one section per group.
+  #' @param decimals Number of decimal places to display. Default is 2.
   #'
   #' @return A gt table object or data frame depending on result argument.
 
   options(scipen = 999)
 
-  # ── Significance star footer ──────────────────────────────────────────────
+  # ── Significance star footer ───────────────────────────────────────────────
   if (stars == 2) {
     footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
   } else if (stars == 3) {
@@ -329,7 +331,7 @@ corstars <- function(x,
   } else if (stars == 4) {
     footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
   } else {
-    stop("Provide a valid number of stars between 2 and 4.")
+    stop("Please provide a valid number of stars between 2 and 4.")
   }
 
   # ── Core helper: build one correlation block from a data frame ─────────────
@@ -354,18 +356,34 @@ corstars <- function(x,
                                       ifelse(p < .05, "*   ", "    ")))
     } else {
       ifelse(p < .0001, "****", ifelse(p < .001, "*** ",
-                                       ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))))
+                                       ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    ") )))
     }
 
-    # Format correlations — drop leading zero per APA
-    R_fmt <- matrix(
-      sub("^(-?)0.", "\\1.",("%.2f", R)),
-      nrow = nrow(R)
-    )
+    # Format correlations — drop leading zero per APA and apply decimal formatting
+    R_fmt <- R
+
+    # Convert to character matrix and format each element
+    R_char <- matrix("", nrow = nrow(R_fmt), ncol = ncol(R_fmt))
+
+    for(i in 1:nrow(R_fmt)) {
+      for(j in 1:ncol(R_fmt)) {
+        if(!is.na(R_fmt[i,j])) {
+          # Format to specified decimals with trailing zeros
+          formatted_val <- sprintf(paste0("%.", decimals, "f"), R_fmt[i,j])
+          # Remove leading zero if it exists and the value is between -1 and 1
+          if(grepl("^-?0\\.", formatted_val) && abs(R_fmt[i,j]) < 1) {
+            formatted_val <- sub("^(-?)0\\.", "\\1.", formatted_val)
+          }
+          R_char[i,j] <- formatted_val
+        } else {
+          R_char[i,j] <- ""
+        }
+      }
+    }
 
     # Paste stars onto correlations
-    Rnew <- matrix(paste0(R_fmt, mystars), ncol = ncol(x_mat))
-    diag(Rnew) <- diag(R_fmt)
+    Rnew <- matrix(paste0(R_char, mystars), ncol = ncol(x_mat))
+    diag(Rnew) <- diag(R_char)
     rownames(Rnew) <- colnames(x_mat)
 
     # Remove triangle
@@ -387,7 +405,8 @@ corstars <- function(x,
         SD   = apply(tempdf, 2, sd, na.rm = TRUE),
         N    = diag(ntemp)
       )
-      tempstats <- as.data.frame(lapply(tempstats, sprintf, fmt = "%.2f"))
+      # Format summary statistics with specified decimals and trailing zeros
+      tempstats <- as.data.frame(lapply(tempstats, sprintf, fmt = paste0("%.", decimals, "f")))
       Rnew <- cbind(tempstats, Rnew)
       names(Rnew) <- c("Mean", "SD", "N", seq_len(ncol(R)))
     } else {
@@ -424,7 +443,6 @@ corstars <- function(x,
 
     tbl <- dplyr::bind_rows(blocks)
   } else {
-    # If no group, build the block for the whole dataframe
     tbl <- build_block(x)
   }
 
@@ -444,7 +462,7 @@ corstars <- function(x,
   group_row_map <- tbl |>
     dplyr::mutate(.row = dplyr::row_number()) |>
     dplyr::group_by(.group_label) |>
-    dplyr::summarise(start = min(.row), end = last(.row))
+    dplyr::summarise(start = min(.row), end = max(.row), .groups = "drop")
 
   out <- tbl |>
     dplyr::select(-.group_label) |>
@@ -474,7 +492,6 @@ corstars <- function(x,
 
   return(out)
 }
-
 
 # Latent Group Model ####
 #' This function creates the LGM matrix
