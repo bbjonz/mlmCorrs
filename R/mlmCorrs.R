@@ -662,4 +662,183 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
   #ends the lgm function
 }
 
+corstars_test <- function(x,
+                          method = "pearson",
+                          removeTriangle = c("upper", "lower"),
+                          alpha.order = FALSE,
+                          stars = 2,
+                          result = "html",
+                          sumstats = TRUE,
+                          title = "Correlation Table",
+                          group = NULL) {
+  #' Create an APA-style correlation table with optional group stacking
+  #'
+  #' @param x Data frame of numeric variables.
+  #' @param method Correlation method. Default is "pearson".
+  #' @param removeTriangle Which triangle to remove. Default is "upper" (APA).
+  #' @param alpha.order Alphabetize variables. Default is FALSE.
+  #' @param stars Number of significance stars. Default is 2, max is 4.
+  #' @param result Output format. Default is "html" (gt table). "text" returns
+  #'   the raw data frame.
+  #' @param sumstats Logical. If TRUE (default), include Mean, SD, and N.
+  #' @param title Character string for the table title.
+  #' @param group Optional character string naming a grouping column in x.
+  #'   If provided, a stacked gt table is produced with one section per group.
+  #'
+  #' @return A gt table object or data frame depending on result argument.
+
+  options(scipen = 999)
+
+  # ── Significance star footer ───────────────────────────────────────────────
+  if (stars == 2) {
+    footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
+  } else if (stars == 3) {
+    footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001."
+  } else if (stars == 4) {
+    footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
+  } else {
+    stop("Please provide a valid number of stars between 2 and 4.")
+  }
+
+  # ── Core helper: build one correlation block from a data frame ─────────────
+  build_block <- function(df, grp_label = NULL) {
+
+    if (alpha.order) df <- df |> dplyr::select(sort(names(df)))
+
+    tempdf <- df
+
+    # Correlation matrix
+    x_mat <- as.matrix(df)
+    corr   <- Hmisc::rcorr(x_mat, type = method[1])
+    R      <- corr$r
+    p      <- corr$P
+    ntemp  <- corr$n
+
+    # Significance stars
+    mystars <- if (stars == 2) {
+      ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))
+    } else if (stars == 3) {
+      ifelse(p < .001, "*** ", ifelse(p < .01, "**  ",
+                                      ifelse(p < .05, "*   ", "    ")))
+    } else {
+      ifelse(p < .0001, "****", ifelse(p < .001, "*** ",
+                                       ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))))
+    }
+
+    # Format correlations — drop leading zero per APA
+    R_fmt <- matrix(
+      sub("^(-?)0.", "\\1.", sprintf("%.2f", R)),
+      nrow = nrow(R)
+    )
+
+    # Paste stars onto correlations
+    Rnew <- matrix(paste0(R_fmt, mystars), ncol = ncol(x_mat))
+    diag(Rnew) <- diag(R_fmt)
+    rownames(Rnew) <- colnames(x_mat)
+
+    # Remove triangle
+    if (removeTriangle[1] == "upper") {
+      Rnew[upper.tri(Rnew, diag = TRUE)] <- ""
+    } else {
+      Rnew[lower.tri(Rnew, diag = TRUE)] <- ""
+    }
+    Rnew <- as.data.frame(Rnew, stringsAsFactors = FALSE)
+
+    # Number columns
+    colnames(Rnew) <- as.character(seq_len(ncol(Rnew)))
+    diag(Rnew)     <- "--"
+
+    # Summary statistics
+    if (sumstats) {
+      tempstats <- data.frame(
+        Mean = colMeans(tempdf, na.rm = TRUE),
+        SD   = apply(tempdf, 2, sd, na.rm = TRUE),
+        N    = diag(ntemp)
+      )
+      tempstats <- as.data.frame(lapply(tempstats, sprintf, fmt = "%.2f"))
+      Rnew <- cbind(tempstats, Rnew)
+      names(Rnew) <- c("Mean", "SD", "N", seq_len(ncol(R)))
+    } else {
+      names(Rnew) <- seq_len(ncol(R))
+    }
+
+    # Row names: capitalise and number
+    rownames(Rnew) <- paste0(
+      seq_len(nrow(Rnew)), ". ",
+      toupper(substr(rownames(Rnew), 1, 1)),
+      substr(rownames(Rnew), 2, nchar(rownames(Rnew)))
+    )
+
+    # Attach group label for stacking
+    Rnew <- Rnew |>
+      tibble::rownames_to_column("Variable") |>
+      dplyr::mutate(.group_label = if (!is.null(grp_label)) stringr::str_to_title(grp_label) else "all",
+                    .before = Variable)
+
+    Rnew
+  }
+
+  # ── Build table data ───────────────────────────────────────────────────────
+  if (!is.null(group)) {
+    # Split by group, dropping the group column itself
+    group_vec  <- x[[group]]
+    group_levs <- unique(group_vec)
+    x_vars     <- x |> dplyr::select(-dplyr::all_of(group))
+
+    blocks <- purrr::map(group_levs, function(g) {
+      df_g <- x_vars[group_vec == g, , drop = FALSE]
+      build_block(df_g, grp_label = as.character(g))
+    })
+
+    tbl <- dplyr::bind_rows(blocks)
+  } else {
+    tbl <- build_block(x)
+  }
+
+  # ── Return text ────────────────────────────────────────────────────────────
+  if (result[1] == "text") {
+    return(tbl |> dplyr::select(-.group_label))
+  }
+
+  # ── Return LaTeX ───────────────────────────────────────────────────────────
+  if (result[1] == "latex") {
+    return(xtable::xtable(tbl |> dplyr::select(-.group_label), type = "latex"))
+  }
+
+  # ── Build gt table ─────────────────────────────────────────────────────────
+
+  # Row indices per group for tab_row_group
+  group_row_map <- tbl |>
+    dplyr::mutate(.row = dplyr::row_number()) |>
+    dplyr::group_by(.group_label) |>
+    dplyr::summarise(start = min(.row), end = max(.row), .groups = "drop")
+
+  out <- tbl |>
+    dplyr::select(-.group_label) |>
+    gt::gt() |>
+    gt::tab_header(title = title) |>
+    gt::tab_options(
+      table.border.bottom.width = "0px",
+      table.border.top.width    = "0px",
+      heading.align             = "left"
+    ) |>
+    gt::cols_align(align = "center", columns = everything()) |>
+    gt::cols_align(align = "left",   columns = "Variable") |>
+    gt::tab_source_note(
+      source_note = gt::html(paste0("<i>Note</i>. ", footer))
+    )
+
+  # Add row group labels only when grouping was requested
+  if (!is.null(group)) {
+    for (i in seq_len(nrow(group_row_map))) {
+      out <- out |>
+        gt::tab_row_group(
+          label = group_row_map$.group_label[i],
+          rows  = group_row_map$start[i]:group_row_map$end[i]
+        )
+    }
+  }
+
+  out
+}
 
