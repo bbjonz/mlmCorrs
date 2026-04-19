@@ -294,14 +294,14 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 # APA Correlation Table Groups ####
 
 corstars <- function(x,
-                          method = "pearson",
-                          removeTriangle = c("upper", "lower"),
-                          alpha.order = FALSE,
-                          stars = 2,
-                          result = "html",
-                          sumstats = TRUE,
-                          title = "Correlation Table",
-                          group = NULL) {
+                     method = "pearson",
+                     removeTriangle = c("upper", "lower"),
+                     alpha.order = FALSE,
+                     stars = 2,
+                     result = "html",
+                     sumstats = TRUE,
+                     title = "Correlation Table",
+                     group = NULL) {
 
   #' Create an APA-style correlation table with optional group stacking
   #'
@@ -321,7 +321,7 @@ corstars <- function(x,
 
   options(scipen = 999)
 
-  # ── Significance star footer ───────────────────────────────────────────────
+  # ── Significance star footer ──────────────────────────────────────────────
   if (stars == 2) {
     footer <- "*<i>p</i> < .05. **<i>p</i> < .01."
   } else if (stars == 3) {
@@ -329,7 +329,7 @@ corstars <- function(x,
   } else if (stars == 4) {
     footer <- "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001."
   } else {
-    stop("Please provide a valid number of stars between 2 and 4.")
+    stop("Provide a valid number of stars between 2 and 4.")
   }
 
   # ── Core helper: build one correlation block from a data frame ─────────────
@@ -359,7 +359,7 @@ corstars <- function(x,
 
     # Format correlations — drop leading zero per APA
     R_fmt <- matrix(
-      sub("^(-?)0.", "\\1.", sprintf("%.2f", R)),
+      sub("^(-?)0.", "\\1.",("%.2f", R)),
       nrow = nrow(R)
     )
 
@@ -424,6 +424,7 @@ corstars <- function(x,
 
     tbl <- dplyr::bind_rows(blocks)
   } else {
+    # If no group, build the block for the whole dataframe
     tbl <- build_block(x)
   }
 
@@ -443,7 +444,7 @@ corstars <- function(x,
   group_row_map <- tbl |>
     dplyr::mutate(.row = dplyr::row_number()) |>
     dplyr::group_by(.group_label) |>
-    dplyr::summarise(start = min(.row), end = max(.row), .groups = "drop")
+    dplyr::summarise(start = min(.row), end = last(.row))
 
   out <- tbl |>
     dplyr::select(-.group_label) |>
@@ -473,7 +474,6 @@ corstars <- function(x,
 
   return(out)
 }
-
 
 
 # Latent Group Model ####
