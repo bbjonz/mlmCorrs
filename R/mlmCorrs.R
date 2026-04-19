@@ -292,8 +292,24 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 
 
 # APA Correlation Table Groups ####
+#' Create an APA-style correlation table with optional group stacking
+#'
+#' @param x Data frame of numeric variables.
+#' @param method Correlation method. Default is "pearson".
+#' @param removeTriangle Which triangle to remove. Default is "upper" (APA).
+#' @param alpha.order Alphabetize variables. Default is FALSE.
+#' @param stars Number of significance stars. Default is 2, max is 4.
+#' @param result Output format. Default is "html" (gt table). "text" returns
+#'   the raw data frame.
+#' @param sumstats Logical. If TRUE (default), include Mean, SD, and N.
+#' @param title Character string for the table title.
+#' @param group Optional character string naming a grouping column in x.
+#'   If provided, a stacked gt table is produced with one section per group.
+#' @param decimals Number of decimal places to display. Default is 2.
+#'
+#' @return A gt table object or data frame depending on result argument.
 
-corstars_shit <- function(x,
+corstars <- function(x,
                           method = "pearson",
                           removeTriangle = c("upper", "lower"),
                           alpha.order = FALSE,
@@ -304,22 +320,6 @@ corstars_shit <- function(x,
                           group = NULL,
                           decimals = 2) {
 
-  #' Create an APA-style correlation table with optional group stacking
-  #'
-  #' @param x Data frame of numeric variables.
-  #' @param method Correlation method. Default is "pearson".
-  #' @param removeTriangle Which triangle to remove. Default is "upper" (APA).
-  #' @param alpha.order Alphabetize variables. Default is FALSE.
-  #' @param stars Number of significance stars. Default is 2, max is 4.
-  #' @param result Output format. Default is "html" (gt table). "text" returns
-  #'   the raw data frame.
-  #' @param sumstats Logical. If TRUE (default), include Mean, SD, and N.
-  #' @param title Character string for the table title.
-  #' @param group Optional character string naming a grouping column in x.
-  #'   If provided, a stacked gt table is produced with one section per group.
-  #' @param decimals Number of decimal places to display. Default is 2.
-  #'
-  #' @return A gt table object or data frame depending on result argument.
 
   options(scipen = 999)
 
