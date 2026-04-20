@@ -295,7 +295,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 #'
 #' This function creates a correlation matrix with descriptive statistics.
 #' @param x Data object.
-#' @param group Optional grouping variable (unquoted column name) for stratified tables.
+#' @param group Optional grouping variable as a quoted string (e.g., group = "sex").
 #' @param method Correlation method. Default is pearson
 #' @param removeTriangle Default is upper (per APA).
 #' @param alpha.order Alphabetize variables. Default is FALSE.
@@ -304,7 +304,6 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 #' @param sumstats Include mean, SD, and N. Default is TRUE.
 #' @param title Table caption.
 #' @return A correlation table (gt object, data frame, or xtable)
-#' @importFrom rlang enquo quo_is_null quo_name
 #' @export
 
 corstars <- function(x, group = NULL, method = "pearson",
@@ -313,17 +312,26 @@ corstars <- function(x, group = NULL, method = "pearson",
                      sumstats = TRUE, title = "Correlation Table") {
 
   list.of.packages <- c("tidyverse", "psych", "Hmisc", "DescTools",
-                        "knitr", "kableExtra", "gt", "rlang")
+                        "knitr", "kableExtra", "gt")
   new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
   if (length(new.packages)) install.packages(new.packages)
 
   options(scipen = 999)
   `%>%` <- magrittr::`%>%`
 
-  # ── capture group argument safely for package use ─────────────────────────
-  group_quo <- rlang::enquo(group)
-  is_grouped <- !rlang::quo_is_null(group_quo)
-  group_var  <- if (is_grouped) rlang::quo_name(group_quo) else NULL
+  # ── validate group argument ───────────────────────────────────────────────
+  # group must be NULL or a single quoted string matching a column name
+  if (!is.null(group)) {
+    if (!is.character(group) || length(group) != 1) {
+      stop("'group' must be a single quoted column name, e.g., group = \"sex\".")
+    }
+    if (!group %in% names(x)) {
+      stop(paste0("Grouping variable \"", group, "\" not found in data. ",
+                  "Column names are: ", paste(names(x), collapse = ", ")))
+    }
+  }
+
+  is_grouped <- !is.null(group)
 
   # ── footer ────────────────────────────────────────────────────────────────
   footer <- switch(as.character(stars),
@@ -422,22 +430,18 @@ corstars <- function(x, group = NULL, method = "pearson",
 
   # ── build tables ──────────────────────────────────────────────────────────
   if (!is_grouped) {
-    # ── No grouping: single table ───────────────────────────────────────────
-    numeric_cols <- x %>% dplyr::select(where(is.numeric))
+    # ── No grouping: drop any non-numeric columns and compute ───────────────
+    numeric_cols <- x[, sapply(x, is.numeric), drop = FALSE]
     tables <- list(build_table(numeric_cols, group_label = NULL))
 
   } else {
     # ── Grouped: one table per level ────────────────────────────────────────
-    if (!group_var %in% names(x))
-      stop(paste0("Grouping variable '", group_var, "' not found in data."))
-
-    grp_vec  <- x[[group_var]]
+    grp_vec  <- x[[group]]
     grp_lvls <- sort(unique(grp_vec[!is.na(grp_vec)]))
 
     tables <- lapply(grp_lvls, function(lvl) {
-      sub_df <- x %>%
-        dplyr::filter(.data[[group_var]] == lvl) %>%
-        dplyr::select(where(is.numeric))
+      sub_df <- x[x[[group]] == lvl, , drop = FALSE]
+      sub_df <- sub_df[, sapply(sub_df, is.numeric), drop = FALSE]
       build_table(sub_df, group_label = cap_first(as.character(lvl)))
     })
   }
