@@ -304,18 +304,19 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 #' @param sumstats Include mean, SD, and N. Default is TRUE.
 #' @param title Table caption.
 #' @return A correlation table (kable object, data frame, or xtable)
+#' @importFrom Hmisc rcorr
+#' @importFrom knitr kable
+#' @importFrom kableExtra kable_styling footnote row_spec
 #' @export
 
-corstars <- function(x, group = NULL, method = "pearson",
+corstars_test0 <- function(x, group = NULL, method = "pearson",
                            removeTriangle = c("upper", "lower"),
                            alpha.order = FALSE, stars = 2, result = "html",
                            sumstats = TRUE, title = "Correlation Table") {
 
-  list.of.packages <- c("psych", "Hmisc", "knitr", "kableExtra")
-  new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-  if (length(new.packages)) install.packages(new.packages)
-
-  options(scipen = 999)
+  # ── Restore global options on exit (do NOT permanently mutate global state) ──
+  old_opts <- options(scipen = 999)
+  on.exit(options(old_opts), add = TRUE)
 
   # ── validate group argument ───────────────────────────────────────────────
   if (!is.null(group)) {
@@ -344,6 +345,10 @@ corstars <- function(x, group = NULL, method = "pearson",
   }
 
   # ── inner workhorse: builds one formatted data frame for a data slice ─────
+  # NOTE: group_label is NO LONGER stored as an attr() on the data frame.
+  # attr() is silently stripped by rbind/dplyr operations common in package
+  # environments, causing downstream length-zero errors in kableExtra.
+  # Instead, build_table() returns a plain list: list(data = ..., group_label = ...).
   build_table <- function(df, group_label = NULL) {
 
     if (alpha.order) df <- df[, sort(names(df)), drop = FALSE]
@@ -404,8 +409,11 @@ corstars <- function(x, group = NULL, method = "pearson",
       cap_first(rownames(Rnew))
     )
 
-    attr(Rnew, "group_label") <- group_label
-    Rnew
+    # FIX: Return a plain list instead of storing group_label as an attribute.
+    # Custom attributes are silently dropped by rbind() and dplyr operations,
+    # which causes attr(tbl, "group_label") to return NULL (length zero) inside
+    # a package, crashing kableExtra's row_group_id check downstream.
+    list(data = Rnew, group_label = group_label)
   }
 
   # ── build tables ──────────────────────────────────────────────────────────
@@ -426,11 +434,12 @@ corstars <- function(x, group = NULL, method = "pearson",
 
   # ── return results ────────────────────────────────────────────────────────
   if (result[1] == "text") {
-    if (length(tables) == 1) return(tables[[1]])
+
+    if (length(tables) == 1) return(tables[[1]]$data)  # FIX: unpack $data
 
     do.call(rbind, lapply(seq_along(tables), function(i) {
-      tbl <- tables[[i]]
-      lbl <- attr(tbl, "group_label")
+      tbl <- tables[[i]]$data         # FIX: unpack $data
+      lbl <- tables[[i]]$group_label  # FIX: unpack $group_label
       sep <- as.data.frame(
         matrix("", nrow = 1, ncol = ncol(tbl)),
         stringsAsFactors = FALSE
@@ -448,8 +457,8 @@ corstars <- function(x, group = NULL, method = "pearson",
     running_row <- 0
 
     for (i in seq_along(tables)) {
-      tbl <- tables[[i]]
-      lbl <- attr(tbl, "group_label")
+      tbl <- tables[[i]]$data         # FIX: unpack $data
+      lbl <- tables[[i]]$group_label  # FIX: unpack $group_label
       df  <- tbl
       df[["Variable"]] <- rownames(tbl)
       rownames(df) <- NULL
@@ -514,9 +523,10 @@ corstars <- function(x, group = NULL, method = "pearson",
   } else {
     # LaTeX
     combined_list <- lapply(tables, function(tbl) {
-      lbl <- attr(tbl, "group_label")
+      lbl <- tbl$group_label  # FIX: unpack $group_label
+      df  <- tbl$data         # FIX: unpack $data
       if (!is.null(lbl)) cat("\n%% Group:", lbl, "\n")
-      xtable::xtable(tbl)
+      xtable::xtable(df)
     })
     invisible(combined_list)
   }
