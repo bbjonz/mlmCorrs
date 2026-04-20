@@ -306,18 +306,32 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 #' @return A correlation table (gt object, data frame, or xtable)
 #' @export
 
+# APA Correlation Table ####
+#' Corstars
+#'
+#' This function creates a correlation matrix with descriptive statistics.
+#' @param x Data object.
+#' @param group Optional grouping variable as a quoted string (e.g., group = "sex").
+#' @param method Correlation method. Default is pearson.
+#' @param removeTriangle Default is upper (per APA).
+#' @param alpha.order Alphabetize variables. Default is FALSE.
+#' @param stars Number of significance stars. Default is 2, max is 4 (p < .0001).
+#' @param result Output options. Default is "html". Option "text" returns a data frame.
+#' @param sumstats Include mean, SD, and N. Default is TRUE.
+#' @param title Table caption.
+#' @return A correlation table (kable object, data frame, or xtable)
+#' @export
+
 corstars <- function(x, group = NULL, method = "pearson",
                      removeTriangle = c("upper", "lower"),
                      alpha.order = FALSE, stars = 2, result = "html",
                      sumstats = TRUE, title = "Correlation Table") {
 
-  list.of.packages <- c("tidyverse", "psych", "Hmisc", "DescTools",
-                        "knitr", "kableExtra", "gt")
+  list.of.packages <- c("psych", "Hmisc", "knitr", "kableExtra")
   new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
   if (length(new.packages)) install.packages(new.packages)
 
   options(scipen = 999)
-  `%>%` <- magrittr::`%>%`
 
   # ── validate group argument ───────────────────────────────────────────────
   if (!is.null(group)) {
@@ -334,31 +348,15 @@ corstars <- function(x, group = NULL, method = "pearson",
 
   # ── footer ────────────────────────────────────────────────────────────────
   footer <- switch(as.character(stars),
-                   "2" = "*<i>p</i> < .05. **<i>p</i> < .01.",
-                   "3" = "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001.",
-                   "4" = "*<i>p</i> < .05. **<i>p</i> < .01. ***<i>p</i> < .001. ****<i>p</i> < .0001.",
+                   "2" = "* p < .05. ** p < .01.",
+                   "3" = "* p < .05. ** p < .01. *** p < .001.",
+                   "4" = "* p < .05. ** p < .01. *** p < .001. **** p < .0001.",
                    stop("Please provide a valid number of stars between 2 and 4.")
   )
 
   # ── helper: capitalize first letter only ─────────────────────────────────
   cap_first <- function(s) {
     paste0(toupper(substr(s, 1, 1)), substr(s, 2, nchar(s)))
-  }
-
-  # ── shared gt formatting ──────────────────────────────────────────────────
-  format_gt <- function(gt_obj) {
-    gt_obj %>%
-      gt::tab_options(
-        table.border.bottom.width = "0px",
-        table.border.top.width    = "0px",
-        heading.align             = "left"
-      ) %>%
-      gt::tab_header(title = title) %>%
-      gt::cols_align(align = "center", columns = everything()) %>%
-      gt::cols_align(align = "left",   columns = "Variable") %>%
-      gt::tab_source_note(
-        source_note = gt::html(c("<i>Note</i>. ", footer))
-      )
   }
 
   # ── inner workhorse: builds one formatted data frame for a data slice ─────
@@ -460,64 +458,74 @@ corstars <- function(x, group = NULL, method = "pearson",
 
   } else if (result[1] == "html") {
 
-    if (!is_grouped) {
-      # ── Single table: plain gt, no group machinery at all ──────────────
-      tables[[1]] %>%
-        tibble::rownames_to_column("Variable") %>%
-        gt::gt() %>%
-        format_gt()
+    # ── Stack all tables, injecting a group header row before each group ───
+    all_rows    <- list()
+    sep_rows    <- c()
+    running_row <- 0
 
-    } else {
-      # ── Grouped: inject separator rows into the data frame, ────────────
-      # then style them as bold headers — no gt group machinery used
+    for (i in seq_along(tables)) {
+      tbl <- tables[[i]]
+      lbl <- attr(tbl, "group_label")
+      df  <- tbl
+      df[["Variable"]] <- rownames(tbl)
+      rownames(df) <- NULL
+      df <- df[, c("Variable", setdiff(names(df), "Variable")), drop = FALSE]
 
-      # Track which rows are separators for styling later
-      sep_rows     <- c()
-      all_rows     <- list()
-      running_row  <- 0
-
-      for (i in seq_along(tables)) {
-        tbl <- tables[[i]]
-        lbl <- attr(tbl, "group_label")
-        df  <- tibble::rownames_to_column(tbl, "Variable")
-
-        # Build a blank separator row with the label in Variable column
-        sep <- as.data.frame(
-          matrix("", nrow = 1, ncol = ncol(df)),
-          stringsAsFactors = FALSE
-        )
-        names(sep)       <- names(df)
+      if (is_grouped) {
+        # blank separator row — label goes in Variable column
+        sep           <- as.data.frame(matrix("", nrow = 1, ncol = ncol(df)),
+                                       stringsAsFactors = FALSE)
+        names(sep)    <- names(df)
         sep[["Variable"]] <- lbl
 
-        running_row  <- running_row + 1
-        sep_rows     <- c(sep_rows, running_row)
-        running_row  <- running_row + nrow(df)
+        running_row <- running_row + 1
+        sep_rows    <- c(sep_rows, running_row)
+        running_row <- running_row + nrow(df)
 
         all_rows[[length(all_rows) + 1]] <- rbind(sep, df)
+      } else {
+        running_row <- running_row + nrow(df)
+        all_rows[[length(all_rows) + 1]] <- df
       }
-
-      combined <- do.call(rbind, all_rows)
-
-      # Build plain gt table then style the separator rows
-      gt_tbl <- combined %>%
-        gt::gt() %>%
-        format_gt() %>%
-        # Bold and shade the separator/header rows
-        gt::tab_style(
-          style = list(
-            gt::cell_fill(color = "#f0f0f0"),
-            gt::cell_text(weight = "bold")
-          ),
-          locations = gt::cells_body(rows = sep_rows)
-        ) %>%
-        # Left-align the label in separator rows across all columns
-        gt::tab_style(
-          style = gt::cell_text(align = "left"),
-          locations = gt::cells_body(rows = sep_rows)
-        )
-
-      gt_tbl
     }
+
+    combined <- do.call(rbind, all_rows)
+    rownames(combined) <- NULL
+
+    # Determine column headers
+    col_headers <- names(combined)
+
+    # Build kable
+    kb <- knitr::kable(combined,
+                       format    = "html",
+                       col.names = col_headers,
+                       align     = c("l", rep("c", ncol(combined) - 1)),
+                       caption   = title,
+                       escape    = FALSE) %>%
+      kableExtra::kable_styling(
+        bootstrap_options = c("condensed"),
+        full_width        = FALSE,
+        position          = "left"
+      ) %>%
+      kableExtra::footnote(
+        general           = footer,
+        general_title     = "Note. ",
+        footnote_as_chunk = TRUE,
+        escape            = FALSE
+      )
+
+    # Style separator/group header rows
+    if (is_grouped && length(sep_rows) > 0) {
+      for (sr in sep_rows) {
+        kb <- kb %>%
+          kableExtra::row_spec(sr,
+                               bold       = TRUE,
+                               background = "#f0f0f0",
+                               extra_css  = "border-top: 1px solid #ccc;")
+      }
+    }
+
+    kb
 
   } else {
     # LaTeX
