@@ -21,7 +21,7 @@ lgm(
 
 \item{group}{Nesting variable.}
 
-\item{title}{Table capation.}
+\item{title}{Table caption.}
 
 \item{printstars}{Provide significance stars.  Default is TRUE.}
 
