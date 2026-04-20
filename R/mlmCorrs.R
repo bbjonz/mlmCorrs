@@ -296,22 +296,6 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 #' This function creates a correlation matrix with descriptive statistics.
 #' @param x Data object.
 #' @param group Optional grouping variable as a quoted string (e.g., group = "sex").
-#' @param method Correlation method. Default is pearson
-#' @param removeTriangle Default is upper (per APA).
-#' @param alpha.order Alphabetize variables. Default is FALSE.
-#' @param stars Number of significance stars. Default is 2, max is 4 (p < .0001)
-#' @param result Output options. Default is "html". Option "text" returns a data frame.
-#' @param sumstats Include mean, SD, and N. Default is TRUE.
-#' @param title Table caption.
-#' @return A correlation table (gt object, data frame, or xtable)
-#' @export
-
-# APA Correlation Table ####
-#' Corstars
-#'
-#' This function creates a correlation matrix with descriptive statistics.
-#' @param x Data object.
-#' @param group Optional grouping variable as a quoted string (e.g., group = "sex").
 #' @param method Correlation method. Default is pearson.
 #' @param removeTriangle Default is upper (per APA).
 #' @param alpha.order Alphabetize variables. Default is FALSE.
