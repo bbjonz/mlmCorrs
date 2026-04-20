@@ -309,7 +309,7 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 #' @importFrom kableExtra kable_styling footnote row_spec
 #' @export
 
-corstars0 <- function(x, group = NULL, method = "pearson",
+corstars <- function(x, group = NULL, method = "pearson",
                            removeTriangle = c("upper", "lower"),
                            alpha.order = FALSE, stars = 2, result = "html",
                            sumstats = TRUE, title = "Correlation Table") {
