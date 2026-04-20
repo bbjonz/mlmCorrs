@@ -1,3 +1,4 @@
+# Descriptive Stats with ICCs and Correlations ####
 #' Estimate ICCs, correlations, and descriptive Statistics
 #'
 #' This function creates the ICC matrix
@@ -12,7 +13,6 @@
 #' @return A correlation table with sample statistics and ICC estimates
 #' @export
 
-# Descriptive Stats with ICCs and Correlations ####
 icc.corrs <- function(x, group, title = "Descriptive Stats",
                       gmc = FALSE, stars = 2,
                       alpha.order = FALSE, result = "html",
