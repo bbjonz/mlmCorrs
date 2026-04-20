@@ -351,8 +351,7 @@ corstars <- function(x, group = NULL, method = "pearson",
       gt::tab_options(
         table.border.bottom.width = "0px",
         table.border.top.width    = "0px",
-        heading.align             = "left",
-        row_group.font.weight     = "bold"
+        heading.align             = "left"
       ) %>%
       gt::tab_header(title = title) %>%
       gt::cols_align(align = "center", columns = everything()) %>%
@@ -462,41 +461,60 @@ corstars <- function(x, group = NULL, method = "pearson",
   } else if (result[1] == "html") {
 
     if (!is_grouped) {
-      # ── Single table: plain gt, no group machinery at all ────────────────
+      # ── Single table: plain gt, no group machinery at all ──────────────
       tables[[1]] %>%
         tibble::rownames_to_column("Variable") %>%
         gt::gt() %>%
         format_gt()
 
     } else {
-      # ── Grouped: stack rows, then add row groups programmatically ─────────
-      # Combine all tables into one data frame, recording row positions
-      all_rows <- lapply(tables, function(tbl) {
-        tibble::rownames_to_column(tbl, "Variable")
-      })
-      combined <- do.call(rbind, all_rows)
+      # ── Grouped: inject separator rows into the data frame, ────────────
+      # then style them as bold headers — no gt group machinery used
 
-      # Build the base gt table with NO groupname_col
-      gt_tbl <- combined %>%
-        gt::gt() %>%
-        format_gt()
-
-      # Add each group via tab_row_group(), referencing row positions
-      row_counts <- sapply(all_rows, nrow)
-      row_ends   <- cumsum(row_counts)
-      row_starts <- c(1, row_ends[-length(row_ends)] + 1)
+      # Track which rows are separators for styling later
+      sep_rows     <- c()
+      all_rows     <- list()
+      running_row  <- 0
 
       for (i in seq_along(tables)) {
-        lbl <- attr(tables[[i]], "group_label")
-        gt_tbl <- gt_tbl %>%
-          gt::tab_row_group(
-            label = lbl,
-            rows  = seq(row_starts[i], row_ends[i])
-          )
+        tbl <- tables[[i]]
+        lbl <- attr(tbl, "group_label")
+        df  <- tibble::rownames_to_column(tbl, "Variable")
+
+        # Build a blank separator row with the label in Variable column
+        sep <- as.data.frame(
+          matrix("", nrow = 1, ncol = ncol(df)),
+          stringsAsFactors = FALSE
+        )
+        names(sep)       <- names(df)
+        sep[["Variable"]] <- lbl
+
+        running_row  <- running_row + 1
+        sep_rows     <- c(sep_rows, running_row)
+        running_row  <- running_row + nrow(df)
+
+        all_rows[[length(all_rows) + 1]] <- rbind(sep, df)
       }
 
-      # tab_row_group() adds groups in reverse order; reverse back
-      gt_tbl <- gt_tbl %>% gt::row_group_order(groups = sapply(tables, function(t) attr(t, "group_label")))
+      combined <- do.call(rbind, all_rows)
+
+      # Build plain gt table then style the separator rows
+      gt_tbl <- combined %>%
+        gt::gt() %>%
+        format_gt() %>%
+        # Bold and shade the separator/header rows
+        gt::tab_style(
+          style = list(
+            gt::cell_fill(color = "#f0f0f0"),
+            gt::cell_text(weight = "bold")
+          ),
+          locations = gt::cells_body(rows = sep_rows)
+        ) %>%
+        # Left-align the label in separator rows across all columns
+        gt::tab_style(
+          style = gt::cell_text(align = "left"),
+          locations = gt::cells_body(rows = sep_rows)
+        )
 
       gt_tbl
     }
