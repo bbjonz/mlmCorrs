@@ -320,7 +320,6 @@ corstars <- function(x, group = NULL, method = "pearson",
   `%>%` <- magrittr::`%>%`
 
   # ── validate group argument ───────────────────────────────────────────────
-  # group must be NULL or a single quoted string matching a column name
   if (!is.null(group)) {
     if (!is.character(group) || length(group) != 1) {
       stop("'group' must be a single quoted column name, e.g., group = \"sex\".")
@@ -366,7 +365,7 @@ corstars <- function(x, group = NULL, method = "pearson",
   # ── inner workhorse: builds one formatted data frame for a data slice ─────
   build_table <- function(df, group_label = NULL) {
 
-    if (alpha.order) df <- df %>% dplyr::select(sort(names(.)))
+    if (alpha.order) df <- df[, sort(names(df)), drop = FALSE]
 
     tempdf <- df
 
@@ -430,12 +429,10 @@ corstars <- function(x, group = NULL, method = "pearson",
 
   # ── build tables ──────────────────────────────────────────────────────────
   if (!is_grouped) {
-    # ── No grouping: drop any non-numeric columns and compute ───────────────
     numeric_cols <- x[, sapply(x, is.numeric), drop = FALSE]
     tables <- list(build_table(numeric_cols, group_label = NULL))
 
   } else {
-    # ── Grouped: one table per level ────────────────────────────────────────
     grp_vec  <- x[[group]]
     grp_lvls <- sort(unique(grp_vec[!is.na(grp_vec)]))
 
@@ -465,23 +462,43 @@ corstars <- function(x, group = NULL, method = "pearson",
   } else if (result[1] == "html") {
 
     if (!is_grouped) {
-      # ── Single table: no groupname_col, no spurious header ──────────────
+      # ── Single table: plain gt, no group machinery at all ────────────────
       tables[[1]] %>%
         tibble::rownames_to_column("Variable") %>%
         gt::gt() %>%
         format_gt()
 
     } else {
-      # ── Grouped: attach label column and use groupname_col ───────────────
+      # ── Grouped: stack rows, then add row groups programmatically ─────────
+      # Combine all tables into one data frame, recording row positions
       all_rows <- lapply(tables, function(tbl) {
-        df <- tibble::rownames_to_column(tbl, "Variable")
-        df$`.group` <- attr(tbl, "group_label")
-        df
+        tibble::rownames_to_column(tbl, "Variable")
       })
+      combined <- do.call(rbind, all_rows)
 
-      do.call(rbind, all_rows) %>%
-        gt::gt(groupname_col = ".group") %>%
+      # Build the base gt table with NO groupname_col
+      gt_tbl <- combined %>%
+        gt::gt() %>%
         format_gt()
+
+      # Add each group via tab_row_group(), referencing row positions
+      row_counts <- sapply(all_rows, nrow)
+      row_ends   <- cumsum(row_counts)
+      row_starts <- c(1, row_ends[-length(row_ends)] + 1)
+
+      for (i in seq_along(tables)) {
+        lbl <- attr(tables[[i]], "group_label")
+        gt_tbl <- gt_tbl %>%
+          gt::tab_row_group(
+            label = lbl,
+            rows  = seq(row_starts[i], row_ends[i])
+          )
+      }
+
+      # tab_row_group() adds groups in reverse order; reverse back
+      gt_tbl <- gt_tbl %>% gt::row_group_order(groups = sapply(tables, function(t) attr(t, "group_label")))
+
+      gt_tbl
     }
 
   } else {
