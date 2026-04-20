@@ -4,8 +4,16 @@
 \alias{icc.corrs}
 \title{Estimate ICCs, correlations, and descriptive Statistics}
 \usage{
-icc.corrs(x, group, title = "Descriptive Stats", gmc = FALSE,
-  alpha.order = FALSE, result = "html")
+icc.corrs(
+  x,
+  group,
+  title = "Descriptive Stats",
+  gmc = FALSE,
+  stars = 2,
+  alpha.order = FALSE,
+  result = "html",
+  icc2 = FALSE
+)
 }
 \arguments{
 \item{x}{Data object.}
@@ -16,9 +24,13 @@ icc.corrs(x, group, title = "Descriptive Stats", gmc = FALSE,
 
 \item{gmc}{Provide group-mean center correlations.  Default is FALSE.}
 
+\item{stars}{Number of significance stars.  Default is 2, max is 4 (p < .0001)}
+
 \item{alpha.order}{Sort variables alphabetically.  Default is False}
 
-\item{result}{Output options.  Default is html table to viewer.  Option "text" returns output to console only.}
+\item{result}{Output options.  Default is kable to viewer.  Option "text" returns output to console only.}
+
+\item{icc2}{Report ICC2 (Bliese).  Default is not}
 }
 \value{
 A correlation table with sample statistics and ICC estimates

@@ -2,28 +2,47 @@
 % Please edit documentation in R/mlmCorrs.R
 \name{corstars}
 \alias{corstars}
-\title{Corstars}
+\title{Create an APA-style correlation table with optional group stacking}
 \usage{
-corstars(x, method = "pearson", removeTriangle = c("upper", "lower"),
-  alpha.order = F, result = "html", sumstats = T,
-  title = "Correlation Table")
+corstars(
+  x,
+  method = "pearson",
+  removeTriangle = c("upper", "lower"),
+  alpha.order = FALSE,
+  stars = 2,
+  result = "html",
+  sumstats = TRUE,
+  title = "Correlation Table",
+  group = NULL,
+  decimals = 2
+)
 }
 \arguments{
-\item{x}{Data object.}
+\item{x}{Data frame of numeric variables.}
 
-\item{method}{Correlation method. Default is pearson}
+\item{method}{Correlation method. Default is "pearson".}
 
-\item{removeTriangle}{Default is upper (per APA).}
+\item{removeTriangle}{Which triangle to remove. Default is "upper" (APA).}
 
-\item{alpha.order}{Alphabetize variables.  Default is FALSE.}
+\item{alpha.order}{Alphabetize variables. Default is FALSE.}
 
-\item{result}{Output options.  Default is html table to viewer.  Option "text" returns output to console only.}
+\item{stars}{Number of significance stars. Default is 2, max is 4.}
 
-\item{title}{Table caption.}
+\item{result}{Output format. Default is "html" (gt table). "text" returns
+the raw data frame.}
+
+\item{sumstats}{Logical. If TRUE (default), include Mean, SD, and N.}
+
+\item{title}{Character string for the table title.}
+
+\item{group}{Optional character string naming a grouping column in x.
+If provided, a stacked gt table is produced with one section per group.}
+
+\item{decimals}{Number of decimal places to display. Default is 2.}
 }
 \value{
-A correlation table
+A gt table object or data frame depending on result argument.
 }
 \description{
-This function creates the ICC matrix
+Create an APA-style correlation table with optional group stacking
 }

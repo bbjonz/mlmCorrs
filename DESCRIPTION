@@ -17,4 +17,4 @@ Imports: dplyr,
           gtools,
           broom.mixed,
           magrittr
-RoxygenNote: 6.1.1
+RoxygenNote: 7.3.3

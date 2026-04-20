@@ -2,10 +2,19 @@
 % Please edit documentation in R/mlmCorrs.R
 \name{lgm}
 \alias{lgm}
-\title{Latent Group Model}
+\title{This function creates the LGM matrix}
 \usage{
-lgm(x, group, title = "LGM", stars = TRUE, sumstats = TRUE,
-  sumtable = FALSE, alpha.order = FALSE)
+lgm(
+  x,
+  group,
+  title = "LGM",
+  printstars = TRUE,
+  result = "html",
+  sumstats = TRUE,
+  sumtable = FALSE,
+  stars = 2,
+  alpha.order = FALSE
+)
 }
 \arguments{
 \item{x}{Data object.}
@@ -14,11 +23,15 @@ lgm(x, group, title = "LGM", stars = TRUE, sumstats = TRUE,
 
 \item{title}{Table capation.}
 
-\item{stars}{Provide significance stars.  Default is TRUE.}
+\item{printstars}{Provide significance stars.  Default is TRUE.}
+
+\item{result}{Output options.  Default is html table to viewer.  Option "text" returns just that.}
 
 \item{sumstats}{Provide summary stats.  Default is TRUE.}
 
 \item{sumtable}{Provide sem summary table. Default is FALSE.}
+
+\item{stars}{Number of significance stars.  Default is 2, max is 4 (p < .0001)}
 
 \item{alpha.order}{Sort variables alphabetically.  Default is FALSE.}
 }
