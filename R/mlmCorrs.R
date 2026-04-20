@@ -307,9 +307,9 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 #' @export
 
 corstars <- function(x, group = NULL, method = "pearson",
-                     removeTriangle = c("upper", "lower"),
-                     alpha.order = FALSE, stars = 2, result = "html",
-                     sumstats = TRUE, title = "Correlation Table") {
+                           removeTriangle = c("upper", "lower"),
+                           alpha.order = FALSE, stars = 2, result = "html",
+                           sumstats = TRUE, title = "Correlation Table") {
 
   list.of.packages <- c("psych", "Hmisc", "knitr", "kableExtra")
   new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
