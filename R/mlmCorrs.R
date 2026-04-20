@@ -304,20 +304,26 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 #' @param sumstats Include mean, SD, and N. Default is TRUE.
 #' @param title Table caption.
 #' @return A correlation table (gt object, data frame, or xtable)
+#' @importFrom rlang enquo quo_is_null quo_name
 #' @export
 
 corstars <- function(x, group = NULL, method = "pearson",
-                           removeTriangle = c("upper", "lower"),
-                           alpha.order = FALSE, stars = 2, result = "html",
-                           sumstats = TRUE, title = "Correlation Table") {
+                     removeTriangle = c("upper", "lower"),
+                     alpha.order = FALSE, stars = 2, result = "html",
+                     sumstats = TRUE, title = "Correlation Table") {
 
   list.of.packages <- c("tidyverse", "psych", "Hmisc", "DescTools",
-                        "knitr", "kableExtra", "gt")
+                        "knitr", "kableExtra", "gt", "rlang")
   new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
   if (length(new.packages)) install.packages(new.packages)
 
   options(scipen = 999)
   `%>%` <- magrittr::`%>%`
+
+  # ── capture group argument safely for package use ─────────────────────────
+  group_quo <- rlang::enquo(group)
+  is_grouped <- !rlang::quo_is_null(group_quo)
+  group_var  <- if (is_grouped) rlang::quo_name(group_quo) else NULL
 
   # ── footer ────────────────────────────────────────────────────────────────
   footer <- switch(as.character(stars),
@@ -332,7 +338,7 @@ corstars <- function(x, group = NULL, method = "pearson",
     paste0(toupper(substr(s, 1, 1)), substr(s, 2, nchar(s)))
   }
 
-  # ── shared gt formatting applied to any gt object ────────────────────────
+  # ── shared gt formatting ──────────────────────────────────────────────────
   format_gt <- function(gt_obj) {
     gt_obj %>%
       gt::tab_options(
@@ -349,7 +355,7 @@ corstars <- function(x, group = NULL, method = "pearson",
       )
   }
 
-  # ── inner workhorse: builds one formatted data frame for a data slice ────
+  # ── inner workhorse: builds one formatted data frame for a data slice ─────
   build_table <- function(df, group_label = NULL) {
 
     if (alpha.order) df <- df %>% dplyr::select(sort(names(.)))
@@ -414,10 +420,7 @@ corstars <- function(x, group = NULL, method = "pearson",
     Rnew
   }
 
-  # ── resolve grouping variable ─────────────────────────────────────────────
-  group_var <- deparse(substitute(group))
-  is_grouped <- group_var != "NULL"
-
+  # ── build tables ──────────────────────────────────────────────────────────
   if (!is_grouped) {
     # ── No grouping: single table ───────────────────────────────────────────
     numeric_cols <- x %>% dplyr::select(where(is.numeric))
@@ -458,14 +461,14 @@ corstars <- function(x, group = NULL, method = "pearson",
   } else if (result[1] == "html") {
 
     if (!is_grouped) {
-      # ── Single table: no groupname_col, no spurious header ─────────────
+      # ── Single table: no groupname_col, no spurious header ──────────────
       tables[[1]] %>%
         tibble::rownames_to_column("Variable") %>%
         gt::gt() %>%
         format_gt()
 
     } else {
-      # ── Grouped: attach label column and use groupname_col ──────────────
+      # ── Grouped: attach label column and use groupname_col ───────────────
       all_rows <- lapply(tables, function(tbl) {
         df <- tibble::rownames_to_column(tbl, "Variable")
         df$`.group` <- attr(tbl, "group_label")
@@ -492,7 +495,7 @@ corstars <- function(x, group = NULL, method = "pearson",
 #' This function creates the LGM matrix
 #' @param x Data object.
 #' @param group Nesting variable.
-#' @param title Table capation.
+#' @param title Table caption.
 #' @param printstars Provide significance stars.  Default is TRUE.
 #' @param result Output options.  Default is html table to viewer.  Option "text" returns just that.
 #' @param sumstats Provide summary stats.  Default is TRUE.
