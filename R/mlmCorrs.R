@@ -608,6 +608,12 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
     (diag(as.matrix(as.data.frame(lavaan::lavInspect(model.out,"cov.ov")[[2]])))+
        diag(as.matrix(as.data.frame(lavaan::lavInspect(model.out,"cov.ov")[[1]]))))
 
+  # flag cells that couldn't be estimated -- division by (near-)zero when a
+  # variance component is ~0 or negative, most often for group-level
+  # correlations (cov2cor() on grp). A plain matrix-wide check against
+  # all.corrs.sem's own dimensions, so it scales to any number of variables.
+  not_estimable <- is.nan(all.corrs.sem) | is.infinite(all.corrs.sem)
+
   #removes leading zeros and rounds to two decimal places
   all.corrs.sem <- matrix(sub("^(-?)0.", "\\1.", sprintf("%.2f", all.corrs.sem)), nrow = nrow(all.corrs.sem))
 
@@ -656,20 +662,31 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
     mystars.grp[lower.tri(mystars.grp, diag=FALSE)] <- ""
     mystars.ind[upper.tri(mystars.ind, diag=TRUE)] <- ""
 
+    # also flag cells where the significance test itself wasn't estimable
+    # (e.g. a zero/NaN standard error) even when the correlation/ICC value
+    # was fine -- checked after masking so only the relevant (non-blanked)
+    # triangle for each star matrix is considered
+    not_estimable <- not_estimable | is.na(mystars.ind) | is.na(mystars.grp)
+
     all.stars <- matrix(paste0(mystars.ind, mystars.grp), ncol=ncol(prob.inds))
 
     matrix.out <- matrix(paste0(all.corrs.sem, all.stars), ncol=ncol(all.corrs.sem))
-
-    #format diagonal with bold
-    if (result=="html") {
-    matrix.d <- diag(matrix.out)
-    diag(matrix.out) <- matrix.d
-    }
 
     table.footer <- "*<i>p</i> < .05. **<i>p</i> < .01. Intraclass correlations are on bold the diagonal. Individual-level correlations are on the lower diagonal. Group-level correlations are on the upper diagonal."
   } else {
     matrix.out <- all.corrs.sem
     table.footer <- "Intraclass correlations are on the diagonal. Individual-level correlations are on the lower diagonal. Group-level correlations are on the upper diagonal."
+  }
+
+  # overwrite non-estimable cells with a marker, regardless of any
+  # significance stars computed above -- not_estimable is an n x n logical
+  # matrix matching matrix.out's dimensions at this point (before the
+  # sumstats cbind below adds Mean/SD columns), so this applies uniformly
+  # no matter how many variables there are
+  if (any(not_estimable)) {
+    matrix.out[not_estimable] <- "--\u2020"
+    table.footer <- paste0(table.footer,
+                           " \u2020 Not estimable (near-zero or negative variance component).")
   }
 
   if(sumstats) {
@@ -694,21 +711,40 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
 
     rownames(matrix.out) <- paste(row.nums,". ", rownames(matrix.out), sep = "")
 
-    #note: gt package doesn't allow for bolding the diagonals yet.  Working on it.
     if (result=="html") {
       # move rownames into a leading "Variable" column
       matrix.out[["Variable"]] <- rownames(matrix.out)
       rownames(matrix.out) <- NULL
       matrix.out <- matrix.out[, c("Variable", setdiff(names(matrix.out), "Variable")), drop = FALSE]
 
+      # the diagonal is always the ICC estimates -- column i holds row i's
+      # diagonal cell, since matrix.out's numbered columns mirror
+      # all.corrs.sem's row order
+      n_vars <- ncol(all.corrs.sem)
+      diag_locs <- lapply(seq_len(n_vars), function(i) {
+        gt::cells_body(columns = as.character(i), rows = i)
+      })
+
+      # gt auto-detects per-column alignment from cell contents, and a
+      # "--†" not-estimable marker makes it misdetect that whole column
+      # as non-numeric (left-aligned) -- align explicitly instead of relying
+      # on the heuristic
+      data_cols <- setdiff(names(matrix.out), "Variable")
+
       matrix.out %>%
         gt::gt () %>%
+        gt::cols_align(align = "left", columns = "Variable") %>%
+        gt::cols_align(align = "center", columns = data_cols) %>%
         gt::tab_options(table.border.bottom.width = "0px",
                         table.border.top.width = "0px",
                         heading.align = "left") %>%
         gt::tab_header(title = title) %>%
+        gt::tab_style(
+          style = gt::cell_text(weight = "bold"),
+          locations = diag_locs
+        ) %>%
         gt::tab_source_note(
-          source_note = gt::html(c("<i>Note</i>. ", footer))
+          source_note = gt::html(c("<i>Note</i>. ", table.footer))
         )
 
 
