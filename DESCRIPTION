@@ -14,7 +14,6 @@ Encoding: UTF-8
 Imports: dplyr,
           tidyr,
           purrr,
-          tibble,
           Hmisc,
           lmerTest,
           lavaan,
@@ -23,6 +22,5 @@ Imports: dplyr,
           kableExtra,
           gt,
           xtable,
-          stringr,
           magrittr
 Config/roxygen2/version: 8.0.0

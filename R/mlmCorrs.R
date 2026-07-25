@@ -279,8 +279,12 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
     }
 
     if(result=="html") {
+      # move rownames into a leading "Variable" column
+      tablePrint[["Variable"]] <- rownames(tablePrint)
+      rownames(tablePrint) <- NULL
+      tablePrint <- tablePrint[, c("Variable", setdiff(names(tablePrint), "Variable")), drop = FALSE]
+
       tablePrint %>%
-        tibble::rownames_to_column(.,"Variable") %>%
         gt::gt(caption = title) %>%
         gt::tab_options(table.border.bottom.width = "0px",
                         table.border.top.width = "0px",
@@ -610,7 +614,7 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
 
     #prep varnames for next iteration through loop
     #this removes first word/variables
-    varnames <- stringr::word(varnames, 2, -1)
+    varnames <- sub("^\\S+\\s*", "", varnames)
 
     #reset dep and increment counter
     dep <- NULL
@@ -730,8 +734,12 @@ lgm <-function(x, group, title="LGM", printstars=TRUE, result = "html",
 
     #note: gt package doesn't allow for bolding the diagonals yet.  Working on it.
     if (result=="html") {
+      # move rownames into a leading "Variable" column
+      matrix.out[["Variable"]] <- rownames(matrix.out)
+      rownames(matrix.out) <- NULL
+      matrix.out <- matrix.out[, c("Variable", setdiff(names(matrix.out), "Variable")), drop = FALSE]
+
       matrix.out %>%
-        tibble::rownames_to_column(.,"Variable") %>%
         gt::gt () %>%
         gt::tab_options(table.border.bottom.width = "0px",
                         table.border.top.width = "0px",
