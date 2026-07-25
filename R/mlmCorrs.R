@@ -316,10 +316,8 @@ icc.corrs <- function(x, group, title = "Descriptive Stats",
 #' @param result Output options. Default is "html". Option "text" returns a data frame.
 #' @param sumstats Include mean, SD, and N. Default is TRUE.
 #' @param title Table caption.
-#' @return A correlation table (kable object, data frame, or xtable)
+#' @return A correlation table (gt object, data frame, or xtable)
 #' @importFrom Hmisc rcorr
-#' @importFrom knitr kable
-#' @importFrom kableExtra kable_styling footnote row_spec
 #' @export
 
 corstars <- function(x, group = NULL, method = "pearson",
@@ -358,10 +356,10 @@ corstars <- function(x, group = NULL, method = "pearson",
   }
 
   # -- inner workhorse: builds one formatted data frame for a data slice -----
-  # NOTE: group_label is NO LONGER stored as an attr() on the data frame.
+  # NOTE: group_label is NOT stored as an attr() on the data frame.
   # attr() is silently stripped by rbind/dplyr operations common in package
-  # environments, causing downstream length-zero errors in kableExtra.
-  # Instead, build_table() returns a plain list: list(data = ..., group_label = ...).
+  # environments, which caused downstream errors in the table-rendering
+  # step. Instead, build_table() returns a plain list: list(data = ..., group_label = ...).
   build_table <- function(df, group_label = NULL) {
 
     if (alpha.order) df <- df[, sort(names(df)), drop = FALSE]
@@ -422,10 +420,10 @@ corstars <- function(x, group = NULL, method = "pearson",
       cap_first(rownames(Rnew))
     )
 
-    # FIX: Return a plain list instead of storing group_label as an attribute.
+    # Return a plain list instead of storing group_label as an attribute.
     # Custom attributes are silently dropped by rbind() and dplyr operations,
     # which causes attr(tbl, "group_label") to return NULL (length zero) inside
-    # a package, crashing kableExtra's row_group_id check downstream.
+    # a package.
     list(data = Rnew, group_label = group_label)
   }
 
@@ -464,74 +462,38 @@ corstars <- function(x, group = NULL, method = "pearson",
 
   } else if (result[1] == "html") {
 
-    # -- Stack all tables, injecting a group header row before each group ---
-    all_rows    <- list()
-    sep_rows    <- c()
-    running_row <- 0
-
-    for (i in seq_along(tables)) {
-      tbl <- tables[[i]]$data         # FIX: unpack $data
-      lbl <- tables[[i]]$group_label  # FIX: unpack $group_label
-      df  <- tbl
-      df[["Variable"]] <- rownames(tbl)
+    # -- Combine each group's table; carry the group label as its own
+    # column so gt can render native row groups (bold header row per
+    # group, handled by gt itself) instead of manually injecting and
+    # styling separator rows ------------------------------------------
+    combined <- do.call(rbind, lapply(tables, function(tbl) {
+      df  <- tbl$data         # FIX: unpack $data
+      lbl <- tbl$group_label  # FIX: unpack $group_label
+      df[["Variable"]] <- rownames(df)
       rownames(df) <- NULL
       df <- df[, c("Variable", setdiff(names(df), "Variable")), drop = FALSE]
-
-      if (is_grouped) {
-        # blank separator row -- label goes in Variable column
-        sep           <- as.data.frame(matrix("", nrow = 1, ncol = ncol(df)),
-                                       stringsAsFactors = FALSE)
-        names(sep)    <- names(df)
-        sep[["Variable"]] <- lbl
-
-        running_row <- running_row + 1
-        sep_rows    <- c(sep_rows, running_row)
-        running_row <- running_row + nrow(df)
-
-        all_rows[[length(all_rows) + 1]] <- rbind(sep, df)
-      } else {
-        running_row <- running_row + nrow(df)
-        all_rows[[length(all_rows) + 1]] <- df
-      }
-    }
-
-    combined <- do.call(rbind, all_rows)
+      if (is_grouped) df[["Group"]] <- lbl
+      df
+    }))
     rownames(combined) <- NULL
 
-    # Determine column headers
-    col_headers <- names(combined)
+    data_cols <- setdiff(names(combined), c("Variable", "Group"))
 
-    # Build kable
-    kb <- knitr::kable(combined,
-                       format    = "html",
-                       col.names = col_headers,
-                       align     = c("l", rep("c", ncol(combined) - 1)),
-                       caption   = title,
-                       escape    = FALSE) %>%
-      kableExtra::kable_styling(
-        bootstrap_options = c("condensed"),
-        full_width        = FALSE,
-        position          = "left"
-      ) %>%
-      kableExtra::footnote(
-        general           = footer,
-        general_title     = "Note. ",
-        footnote_as_chunk = TRUE,
-        escape            = FALSE
-      )
-
-    # Style separator/group header rows
-    if (is_grouped && length(sep_rows) > 0) {
-      for (sr in sep_rows) {
-        kb <- kb %>%
-          kableExtra::row_spec(sr,
-                               bold       = TRUE,
-                               background = "#f0f0f0",
-                               extra_css  = "border-top: 1px solid #ccc;")
-      }
+    gt_tbl <- if (is_grouped) {
+      gt::gt(combined, caption = title, groupname_col = "Group")
+    } else {
+      gt::gt(combined, caption = title)
     }
 
-    kb
+    gt_tbl %>%
+      gt::cols_align(align = "left", columns = "Variable") %>%
+      gt::cols_align(align = "center", columns = data_cols) %>%
+      gt::tab_options(table.border.bottom.width = "0px",
+                      table.border.top.width = "0px",
+                      heading.align = "left") %>%
+      gt::tab_source_note(
+        source_note = gt::html(paste0("<i>Note</i>. ", footer))
+      )
 
   } else {
     # LaTeX

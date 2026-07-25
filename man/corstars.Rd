@@ -36,7 +36,7 @@ corstars(
 \item{title}{Table caption.}
 }
 \value{
-A correlation table (kable object, data frame, or xtable)
+A correlation table (gt object, data frame, or xtable)
 }
 \description{
 This function creates a correlation matrix with descriptive statistics.
