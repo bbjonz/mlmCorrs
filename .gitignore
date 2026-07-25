@@ -6,3 +6,6 @@ Rplots.pdf
 
 # simulation scratch output, not package data
 fullN25.new.rds
+
+# local Claude Code guidance, kept out of the public repo
+CLAUDE.md
