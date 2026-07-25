@@ -1,0 +1,8 @@
+.DS_Store
+.Rhistory
+.RData
+Rplots.pdf
+.Rproj.user/
+
+# simulation scratch output, not package data
+fullN25.new.rds

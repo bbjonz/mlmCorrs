@@ -1,0 +1,28 @@
+Package: mlmCorrs
+Title: Multilevel Correlation Matrices and Intraclass Correlations
+Version: 0.0.0.9001
+Authors@R: person("Joseph", "Bonito", email = "jbonito@email.arizona.edu", role = c("aut", "cre"))
+Description: Creates APA-style correlation tables (corstars(), optionally
+    split by group), an intraclass-correlation table combining group-mean
+    reliability estimates with a correlation matrix (icc.corrs()), and a
+    two-level (within/between) correlation matrix fit via a saturated
+    multilevel SEM (lgm()), for a set of numeric variables nested within
+    clusters.
+Depends: R (>= 3.5.2)
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports: dplyr,
+          tidyr,
+          purrr,
+          tibble,
+          Hmisc,
+          lmerTest,
+          lavaan,
+          broom.mixed,
+          knitr,
+          kableExtra,
+          gt,
+          xtable,
+          stringr,
+          magrittr
+Config/roxygen2/version: 8.0.0
